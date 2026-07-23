@@ -431,7 +431,7 @@ if st.session_state.red is not None:
     
     # Mostrar gráfico 3D de la topología
     st.plotly_chart(
-        generate_3d_plot(red, theme="dark"), 
+        generate_3d_plot(red, st.session_state.presion_entrada), 
         use_container_width=True, 
         key="grafico_topologia"
     )
@@ -613,7 +613,7 @@ if st.session_state.red is not None:
         
         with tab1:
             st.plotly_chart(
-                generate_3d_plot(red, theme="dark"), 
+                generate_3d_plot(red, st.session_state.presion_entrada), 
                 use_container_width=True, 
                 key="grafico_resultados"
             )
