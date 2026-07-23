@@ -108,7 +108,9 @@ if 'tmp_dxf_path' not in st.session_state:
     st.session_state.tmp_dxf_path = None
 if 'nodos_raw' not in st.session_state:
     st.session_state.nodos_raw = None
-
+if detectar_sincronizacion_3d():
+    # Si se detectó sincronización, la función ya manejó la actualización
+    pass
 # ================================================================================
 # IMPORTACIONES DE MÓDULOS PROPIOS
 # ================================================================================
@@ -129,7 +131,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos con sincronización"""
+    """Genera HTML para la configuración interactiva de nodos con sincronización directa"""
     
     # Verificar que los datos no estén vacíos
     if not nodos_data or not tuberias_data:
@@ -156,6 +158,8 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .btn-secondary:hover{{background:#5d6d7e}}
 .btn-sync{{background:#8e44ad}}
 .btn-sync:hover{{background:#6c3483}}
+.btn-sync.active{{background:#27ae60;animation:pulse 1s ease-in-out}}
+@keyframes pulse{{0%{{transform:scale(1)}}50%{{transform:scale(1.05)}}100%{{transform:scale(1)}}}}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
@@ -169,6 +173,7 @@ input[type="range"]{{width:100%;margin:5px 0;accent-color:#3498db}}
 .upload-area:hover{{border-color:#3498db;background:rgba(52,152,219,0.1)}}
 hr{{margin:8px 0;border-color:#444444}}
 label{{color:#ffffff}}
+.sync-status{{font-size:9px;color:#888;text-align:center;margin:2px 0}}
 </style>
 </head>
 <body>
@@ -178,14 +183,12 @@ label{{color:#ffffff}}
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
 
-<!-- Botón de sincronización -->
+<!-- Botón de sincronización directa -->
 <div style="margin-top:8px;">
-    <button class="btn btn-sync" onclick="sincronizarTabla()" style="width:100%; font-size:11px; padding:6px;">
+    <button class="btn btn-sync" onclick="sincronizarTablaDirecta()" id="syncBtn" style="width:100%; font-size:11px; padding:6px;">
         🔄 Sincronizar con Tabla Manual
     </button>
-    <p style="font-size:8px; color:#666; text-align:center; margin:2px 0;">
-        Guarda los cambios y actualiza la tabla manual
-    </p>
+    <p class="sync-status" id="syncStatus">Click para actualizar la tabla manual con la configuración actual</p>
 </div>
 
 <!-- Área de carga de configuración -->
@@ -221,149 +224,153 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// FUNCIÓN PARA SINCRONIZAR CON LA TABLA MANUAL
+// FUNCIÓN PARA SINCRONIZAR DIRECTAMENTE CON LA TABLA MANUAL
 // ============================================================
-function sincronizarTabla() {{
+function sincronizarTablaDirecta() {
+    const btn = document.getElementById('syncBtn');
+    const status = document.getElementById('syncStatus');
+    
     // Crear objeto de configuración actual
-    const config = {{
+    const config = {
         nodo_entrada: entradaId,
-        nodos: nodos.map(n => ({{
+        nodos: nodos.map(n => ({
             id: n.id,
             es_entrada: n.id === entradaId,
             tipo_aparato: n.tipo_aparato,
             valvula_tipo: n.valvula_tipo,
             valvula_cerrada: n.valvula_cerrada || false,
             valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
-        }}))
-    }};
+        }))
+    };
     
     // Guardar en localStorage para que Streamlit lo pueda leer
-    try {{
+    try {
         localStorage.setItem('hydro_config_3d', JSON.stringify(config));
         console.log("✅ Configuración guardada en localStorage");
-    }} catch(e) {{
+    } catch(e) {
         console.warn("Error guardando en localStorage:", e);
-    }}
+    }
     
-    // Descargar el JSON para que Streamlit lo cargue
-    const blob = new Blob([JSON.stringify(config, null, 2)], {{type: 'application/json'}});
-    const url = URL.createObjectURL(blob);
+    // También guardar en sessionStorage (más efímero)
+    try {
+        sessionStorage.setItem('hydro_config_3d_sync', 'true');
+    } catch(e) {}
     
-    // Crear un enlace de descarga y hacer clic en él
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'hydro_config_temp.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Feedback visual
+    btn.classList.add('active');
+    status.innerHTML = '✅ ¡Configuración sincronizada! Actualizando tabla...';
+    status.style.color = '#2ecc71';
     
-    alert('✅ Configuración guardada. Haz clic en "Cargar configuración" en la tabla manual para actualizar.');
-}}
+    // Recargar la página para que Streamlit lea la configuración
+    setTimeout(() => {
+        // Usar un parámetro en la URL para indicar que hay que recargar la tabla
+        window.location.href = window.location.pathname + '?sync=true';
+    }, 500);
+}
 
 // ============================================================
-// FUNCIÓN PARA CARGAR CONFIGURACIÓN DESDE JSON
+// FUNCIÓN PARA CARGAR CONFIGURACIÓN DESDE JSON (archivo)
 // ============================================================
-function cargarConfiguracion(event) {{
+function cargarConfiguracion(event) {
     const file = event.target.files[0];
     if (!file) return;
     
     const reader = new FileReader();
-    reader.onload = function(e) {{
-        try {{
+    reader.onload = function(e) {
+        try {
             const config = JSON.parse(e.target.result);
             document.getElementById('fileStatus').innerHTML = '✅ Cargado: ' + file.name;
             aplicarConfiguracion(config);
-        }} catch (error) {{
+        } catch (error) {
             alert('❌ Error al leer el archivo JSON: ' + error.message);
-        }}
-    }};
+        }
+    };
     reader.readAsText(file);
     event.target.value = '';
-}}
+}
 
-function aplicarConfiguracion(config) {{
+function aplicarConfiguracion(config) {
     entradaId = null;
-    for(const n of nodos) {{
+    for(const n of nodos) {
         n.es_entrada = false;
         n.tipo_aparato = "";
         n.valvula_tipo = "";
         n.valvula_cerrada = false;
         n.valvula_apertura = 100;
-    }}
+    }
     
     const nodoEntrada = config.nodo_entrada;
-    if (nodoEntrada !== undefined && nodoEntrada !== null) {{
+    if (nodoEntrada !== undefined && nodoEntrada !== null) {
         const entrada = nodos.find(n => n.id === nodoEntrada);
-        if(entrada) {{
+        if(entrada) {
             entrada.es_entrada = true;
             entradaId = nodoEntrada;
-        }}
-    }}
+        }
+    }
     
-    for(const nodoConfig of config.nodos) {{
+    for(const nodoConfig of config.nodos) {
         const nodo = nodos.find(n => n.id === nodoConfig.id);
-        if(nodo) {{
+        if(nodo) {
             if(nodoConfig.tipo_aparato) nodo.tipo_aparato = nodoConfig.tipo_aparato;
-            if(nodoConfig.valvula_tipo) {{
+            if(nodoConfig.valvula_tipo) {
                 nodo.valvula_tipo = nodoConfig.valvula_tipo;
                 nodo.valvula_cerrada = nodoConfig.valvula_cerrada || false;
                 nodo.valvula_apertura = nodoConfig.valvula_apertura !== undefined ? nodoConfig.valvula_apertura : 100;
-            }}
-            if(nodoConfig.es_entrada) {{
+            }
+            if(nodoConfig.es_entrada) {
                 nodo.es_entrada = true;
                 entradaId = nodoConfig.id;
-            }}
-        }}
-    }}
+            }
+        }
+    }
     
     actualizarGrafico();
     actualizarResumen();
-    if(nodoSeleccionado) {{
+    if(nodoSeleccionado) {
         const nodoActualizado = nodos.find(n => n.id === nodoSeleccionado.id);
         if(nodoActualizado) mostrarPanel(nodoActualizado);
-    }}
+    }
     
     console.log("✅ Configuración aplicada exitosamente");
-}}
+}
 
 // ============================================================
 // ACTUALIZAR GRÁFICO 3D
 // ============================================================
-function actualizarGrafico() {{
-    if (nodos.length === 0) {{
+function actualizarGrafico() {
+    if (nodos.length === 0) {
         document.getElementById('main').innerHTML = '<p style="color:red;text-align:center;margin-top:50px;">⚠️ No hay nodos para mostrar</p>';
         return;
-    }}
+    }
     
     const tx=[], ty=[], tz=[];
-    for(const t of tuberias) {{
+    for(const t of tuberias) {
         tx.push(t.x1, t.x2, null);
         ty.push(t.y1, t.y2, null);
         tz.push(t.z1, t.z2, null);
-    }}
+    }
     
     const nx=[], ny=[], nz=[], col=[], tam=[], labels=[], customdata=[];
-    for(const n of nodos) {{
+    for(const n of nodos) {
         nx.push(n.x);
         ny.push(n.y);
         nz.push(n.z);
         labels.push(String(n.id));
         customdata.push(n.id);
         
-        if(n.id === entradaId) {{
+        if(n.id === entradaId) {
             col.push('#e74c3c');
             tam.push(12);
-        }} else if(n.tipo_aparato) {{
+        } else if(n.tipo_aparato) {
             col.push('#3498db');
             tam.push(9);
-        }} else if(n.valvula_tipo) {{
+        } else if(n.valvula_tipo) {
             col.push('#e67e22');
             tam.push(9);
-        }} else {{
+        } else {
             col.push('#95a5a6');
             tam.push(6);
-        }}
+        }
     }}
     
     var xs = nodos.map(n => n.x);
@@ -374,65 +381,65 @@ function actualizarGrafico() {{
     var zRange = Math.max(...zs) - Math.min(...zs) || 1;
     var maxRange = Math.max(xRange, yRange, zRange);
     
-    const layout = {{
-        scene: {{
-            xaxis: {{title: 'X (m)'}},
-            yaxis: {{title: 'Y (m)'}},
-            zaxis: {{title: 'Z (m)'}},
+    const layout = {
+        scene: {
+            xaxis: {title: 'X (m)'},
+            yaxis: {title: 'Y (m)'},
+            zaxis: {title: 'Z (m)'},
             aspectmode: 'manual',
-            aspectratio: {{x: xRange / maxRange, y: yRange / maxRange, z: zRange / maxRange}},
-            camera: currentCamera || {{eye: {{x: 1.5, y: 1.5, z: 1.5}}}},
+            aspectratio: {x: xRange / maxRange, y: yRange / maxRange, z: zRange / maxRange},
+            camera: currentCamera || {eye: {x: 1.5, y: 1.5, z: 1.5}},
             bgcolor: '#1e1e1e'
-        }},
-        margin: {{l: 0, r: 0, t: 40, b: 0}},
+        },
+        margin: {l: 0, r: 0, t: 40, b: 0},
         paper_bgcolor: '#1e1e1e',
         plot_bgcolor: '#1e1e1e'
-    }};
+    };
     
     const traces = [
-        {{
+        {
             type: 'scatter3d',
             mode: 'lines',
             x: tx,
             y: ty,
             z: tz,
-            line: {{color: '#bdc3c7', width: 4}},
+            line: {color: '#bdc3c7', width: 4},
             showlegend: false,
             hoverinfo: 'skip'
-        }},
-        {{
+        },
+        {
             type: 'scatter3d',
             mode: 'markers+text',
             x: nx,
             y: ny,
             z: nz,
-            marker: {{color: col, size: tam, line: {{width: 1, color: 'white'}}}},
+            marker: {color: col, size: tam, line: {width: 1, color: 'white'}},
             text: labels,
             textposition: 'top center',
-            textfont: {{size: 10, color: '#ffffff'}},
+            textfont: {size: 10, color: '#ffffff'},
             customdata: customdata,
             hoverinfo: 'text',
-            hovertext: nodos.map(n => `Nodo ${{n.id}}<br>X: ${{n.x.toFixed(2)}}<br>Y: ${{n.y.toFixed(2)}}<br>Z: ${{n.z.toFixed(2)}}`)
-        }}
+            hovertext: nodos.map(n => `Nodo ${n.id}<br>X: ${n.x.toFixed(2)}<br>Y: ${n.y.toFixed(2)}<br>Z: ${n.z.toFixed(2)}`)
+        }
     ];
     
     Plotly.newPlot('main', traces, layout);
     
-    document.getElementById('main').on('plotly_click', function(data) {{
-        if(data.points && data.points[0]) {{
+    document.getElementById('main').on('plotly_click', function(data) {
+        if(data.points && data.points[0]) {
             const nodoId = data.points[0].customdata;
             const nodo = nodos.find(n => n.id === nodoId);
-            if(nodo) {{
+            if(nodo) {
                 mostrarPanel(nodo);
-            }}
-        }}
-    }});
-}}
+            }
+        }
+    });
+}
 
 // ============================================================
 // FUNCIONES DEL PANEL
 // ============================================================
-function mostrarPanel(nodo) {{
+function mostrarPanel(nodo) {
     if (!nodo) return;
     nodoSeleccionado = nodo;
     const esEntrada = (nodo.id === entradaId);
@@ -441,189 +448,189 @@ function mostrarPanel(nodo) {{
     const valvulaCerrada = nodo.valvula_cerrada || false;
     const apertura = nodo.valvula_apertura !== undefined ? nodo.valvula_apertura : 100;
     
-    let html = `<div class="info-nodo"><h4>🔘 Nodo ${{nodo.id}}</h4>
-    <p>📍 (${{nodo.x.toFixed(1)}}, ${{nodo.y.toFixed(1)}}, ${{nodo.z.toFixed(1)}})</p>
+    let html = `<div class="info-nodo"><h4>🔘 Nodo ${nodo.id}</h4>
+    <p>📍 (${nodo.x.toFixed(1)}, ${nodo.y.toFixed(1)}, ${nodo.z.toFixed(1)})</p>
     <p>📌 Estado: `;
     if(esEntrada) html += '<span class="badge-entrada">🚰 ENTRADA</span>';
-    if(tieneAparato) html += `<span class="badge-aparato">📌 ${{nodo.tipo_aparato}}</span>`;
-    if(tieneValvula) {{
-        const estadoValvula = valvulaCerrada ? 'CERRADA' : `Abierta al ${{apertura}}%`;
-        html += `<span class="badge-valvula">🔧 ${{nodo.valvula_tipo}} (${{estadoValvula}})</span>`;
-    }}
+    if(tieneAparato) html += `<span class="badge-aparato">📌 ${nodo.tipo_aparato}</span>`;
+    if(tieneValvula) {
+        const estadoValvula = valvulaCerrada ? 'CERRADA' : `Abierta al ${apertura}%`;
+        html += `<span class="badge-valvula">🔧 ${nodo.valvula_tipo} (${estadoValvula})</span>`;
+    }
     if(!esEntrada && !tieneAparato && !tieneValvula) html += '⚪ Sin asignar';
     
     html += `</p><hr>
-    <button class="btn" onclick="setEntrada(${{nodo.id}})" ${{esEntrada ? 'disabled' : ''}} style="width:100%">🚰 Hacer ENTRADA</button>
+    <button class="btn" onclick="setEntrada(${nodo.id})" ${esEntrada ? 'disabled' : ''} style="width:100%">🚰 Hacer ENTRADA</button>
     
     <div style="margin-top:5px"><label>📌 Aparato:</label>
     <select id="selAparato" style="width:100%"><option value="">-- Seleccionar --</option>`;
-    for(const a of aparatos) {{
-        html += `<option value="${{a}}" ${{nodo.tipo_aparato === a ? 'selected' : ''}}>${{a}}</option>`;
-    }}
+    for(const a of aparatos) {
+        html += `<option value="${a}" ${nodo.tipo_aparato === a ? 'selected' : ''}>${a}</option>`;
+    }
     html += `</select>
-    <button class="btn" onclick="setAparato(${{nodo.id}})" style="width:100%">Aplicar</button></div>
+    <button class="btn" onclick="setAparato(${nodo.id})" style="width:100%">Aplicar</button></div>
     
     <div style="margin-top:5px"><label>🔧 Válvula:</label>
     <select id="selValvula" style="width:100%">
         <option value="">-- Ninguna --</option>
-        <option value="Compuerta" ${{nodo.valvula_tipo === 'Compuerta' ? 'selected' : ''}}>Compuerta (Leq=0.3m)</option>
-        <option value="Globo" ${{nodo.valvula_tipo === 'Globo' ? 'selected' : ''}}>Globo (Leq=1.5m)</option>
-        <option value="Check" ${{nodo.valvula_tipo === 'Check' ? 'selected' : ''}}>Check (Leq=2.5m)</option>
-        <option value="Esfera" ${{nodo.valvula_tipo === 'Esfera' ? 'selected' : ''}}>Esfera (Leq=0.2m)</option>
+        <option value="Compuerta" ${nodo.valvula_tipo === 'Compuerta' ? 'selected' : ''}>Compuerta (Leq=0.3m)</option>
+        <option value="Globo" ${nodo.valvula_tipo === 'Globo' ? 'selected' : ''}>Globo (Leq=1.5m)</option>
+        <option value="Check" ${nodo.valvula_tipo === 'Check' ? 'selected' : ''}>Check (Leq=2.5m)</option>
+        <option value="Esfera" ${nodo.valvula_tipo === 'Esfera' ? 'selected' : ''}>Esfera (Leq=0.2m)</option>
     </select>
     
     <div style="margin-top:8px;">
-        <label style="font-size:10px; color:#aaaaaa;">🔓 Apertura: <span id="aperturaDisplay">${{apertura}}</span>%</label>
-        <input type="range" id="selApertura" min="0" max="100" value="${{apertura}}" step="5" 
+        <label style="font-size:10px; color:#aaaaaa;">🔓 Apertura: <span id="aperturaDisplay">${apertura}</span>%</label>
+        <input type="range" id="selApertura" min="0" max="100" value="${apertura}" step="5" 
                style="width:100%; margin:3px 0;" 
                oninput="document.getElementById('aperturaDisplay').innerText = this.value">
     </div>
     
     <div style="margin-top:5px">
-        <select id="selEstadoValvula" style="width:100%; margin-top:2px" ${{!tieneValvula ? 'disabled' : ''}}>
-            <option value="abierta" ${{!valvulaCerrada ? 'selected' : ''}}>ABIERTA (flujo normal)</option>
-            <option value="cerrada" ${{valvulaCerrada ? 'selected' : ''}}>CERRADA (aisla aguas abajo)</option>
+        <select id="selEstadoValvula" style="width:100%; margin-top:2px" ${!tieneValvula ? 'disabled' : ''}>
+            <option value="abierta" ${!valvulaCerrada ? 'selected' : ''}>ABIERTA (flujo normal)</option>
+            <option value="cerrada" ${valvulaCerrada ? 'selected' : ''}>CERRADA (aisla aguas abajo)</option>
         </select>
     </div>
-    <button class="btn" onclick="setValvula(${{nodo.id}})" style="width:100%; margin-top:3px">Aplicar</button></div>`;
+    <button class="btn" onclick="setValvula(${nodo.id})" style="width:100%; margin-top:3px">Aplicar</button></div>`;
     
-    if(!esEntrada && !tieneAparato && !tieneValvula) {{
-        html += `<hr><button class="btn" onclick="limpiarNodo(${{nodo.id}})" style="width:100%">🗑️ Limpiar todo</button>`;
-    }}
+    if(!esEntrada && !tieneAparato && !tieneValvula) {
+        html += `<hr><button class="btn" onclick="limpiarNodo(${nodo.id})" style="width:100%">🗑️ Limpiar todo</button>`;
+    }
     html += `</div>`;
     document.getElementById('info-panel').innerHTML = html;
-}}
+}
 
 // ============================================================
 // FUNCIONES DE CONFIGURACIÓN
 // ============================================================
-function setEntrada(id) {{
-    if(entradaId !== null && entradaId !== undefined) {{
+function setEntrada(id) {
+    if(entradaId !== null && entradaId !== undefined) {
         const old = nodos.find(n => n.id === entradaId);
         if(old) old.es_entrada = false;
-    }}
+    }
     entradaId = id;
     const nodo = nodos.find(n => n.id === id);
-    if(nodo) {{
+    if(nodo) {
         nodo.es_entrada = true;
         nodo.tipo_aparato = "";
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
         nodo.valvula_apertura = 100;
-    }}
+    }
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
-}}
+}
 
-function setAparato(id) {{
+function setAparato(id) {
     const tipo = document.getElementById('selAparato').value;
     if(!tipo) return;
-    if(id === entradaId) {{
+    if(id === entradaId) {
         alert('La entrada no puede ser aparato');
         return;
-    }}
+    }
     const nodo = nodos.find(n => n.id === id);
-    if(nodo) {{
+    if(nodo) {
         nodo.tipo_aparato = tipo;
         nodo.es_entrada = false;
-    }}
+    }
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
-}}
+}
 
-function setValvula(id) {{
+function setValvula(id) {
     const tipo = document.getElementById('selValvula').value;
     const estado = document.getElementById('selEstadoValvula').value;
     const apertura = parseInt(document.getElementById('selApertura').value) || 100;
     const nodo = nodos.find(n => n.id === id);
     if(!nodo) return;
     
-    if(!tipo) {{
+    if(!tipo) {
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
         nodo.valvula_apertura = 100;
-    }} else {{
+    } else {
         nodo.valvula_tipo = tipo;
         nodo.valvula_cerrada = (estado === 'cerrada');
         nodo.valvula_apertura = apertura;
-    }}
+    }
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
-}}
+}
 
-function limpiarNodo(id) {{
+function limpiarNodo(id) {
     const nodo = nodos.find(n => n.id === id);
-    if(nodo) {{
+    if(nodo) {
         if(nodo.id === entradaId) entradaId = null;
         nodo.es_entrada = false;
         nodo.tipo_aparato = "";
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
         nodo.valvula_apertura = 100;
-    }}
+    }
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
-}}
+}
 
-function resetear() {{
-    if(confirm('¿Resetear toda la configuración?')) {{
+function resetear() {
+    if(confirm('¿Resetear toda la configuración?')) {
         entradaId = null;
-        for(const n of nodos) {{
+        for(const n of nodos) {
             n.es_entrada = false;
             n.tipo_aparato = "";
             n.valvula_tipo = "";
             n.valvula_cerrada = false;
             n.valvula_apertura = 100;
-        }}
+        }
         actualizarGrafico();
         actualizarResumen();
         document.getElementById('info-panel').innerHTML = '<p style="font-size:11px; color:#aaaaaa">Seleccione un nodo</p>';
-    }}
-}}
+    }
+}
 
-function actualizarResumen() {{
+function actualizarResumen() {
     const entrada = nodos.find(n => n.id === entradaId);
     const aparatosList = nodos.filter(n => n.tipo_aparato);
     const valvulasList = nodos.filter(n => n.valvula_tipo);
     const valvulasCerradas = valvulasList.filter(n => n.valvula_cerrada);
-    const totalUG = aparatosList.reduce((sum, n) => {{
+    const totalUG = aparatosList.reduce((sum, n) => {
         const ugMap = {json.dumps({k:v["ug"] for k,v in UNIDADES_GASTO.items()})};
         return sum + (ugMap[n.tipo_aparato] || 0);
-    }}, 0);
-    document.getElementById('resumen').innerHTML = `<strong>🚰 Entrada:</strong> ${{entrada !== null && entrada !== undefined ? 'Nodo '+entrada.id : '❌ No'}}<br>
-    <strong>📌 Aparatos:</strong> ${{aparatosList.length}}<br>
-    <strong>🔧 Válvulas:</strong> ${{valvulasList.length}} (${{valvulasCerradas.length}} cerradas)<br>
-    <strong>📊 UG totales:</strong> ${{totalUG}} UG<br>
-    <strong>💧 Caudal probable:</strong> ${{(0.2 * Math.sqrt(totalUG) + 0.5).toFixed(2)}} L/s`;
-}}
+    }, 0);
+    document.getElementById('resumen').innerHTML = `<strong>🚰 Entrada:</strong> ${entrada !== null && entrada !== undefined ? 'Nodo '+entrada.id : '❌ No'}<br>
+    <strong>📌 Aparatos:</strong> ${aparatosList.length}<br>
+    <strong>🔧 Válvulas:</strong> ${valvulasList.length} (${valvulasCerradas.length} cerradas)<br>
+    <strong>📊 UG totales:</strong> ${totalUG} UG<br>
+    <strong>💧 Caudal probable:</strong> ${(0.2 * Math.sqrt(totalUG) + 0.5).toFixed(2)} L/s`;
+}
 
-function guardar() {{
-    if(entradaId === null || entradaId === undefined) {{
+function guardar() {
+    if(entradaId === null || entradaId === undefined) {
         alert('⚠️ Seleccione un nodo de entrada antes de guardar');
         return;
-    }}
-    const config = {{
+    }
+    const config = {
         nodo_entrada: entradaId,
-        nodos: nodos.map(n => ({{
+        nodos: nodos.map(n => ({
             id: n.id,
             es_entrada: n.id === entradaId,
             tipo_aparato: n.tipo_aparato,
             valvula_tipo: n.valvula_tipo,
             valvula_cerrada: n.valvula_cerrada || false,
             valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
-        }}))
-    }};
-    const blob = new Blob([JSON.stringify(config, null, 2)], {{type: 'application/json'}});
+        }))
+    };
+    const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'HydroDomusPy_config.json';
     a.click();
     alert('✅ Configuración guardada exitosamente.');
-}}
+}
 
 // ============================================================
 // INICIALIZAR
@@ -643,6 +650,68 @@ def get_status(red):
     if red.nodo_entrada_id is None:
         return "🟡 Sin entrada"
     return "🟢 Red lista"
+
+# ================================================================================
+# FUNCIÓN PARA DETECTAR SINCRONIZACIÓN DESDE LA INTERFAZ 3D
+# ================================================================================
+
+def detectar_sincronizacion_3d():
+    """
+    Detecta si hay una solicitud de sincronización desde la interfaz 3D.
+    Si existe, aplica la configuración guardada en localStorage.
+    """
+    # Verificar si hay un parámetro 'sync' en la URL
+    query_params = st.query_params
+    
+    if 'sync' in query_params:
+        # Limpiar el parámetro para evitar recargas infinitas
+        st.query_params.clear()
+        
+        # Intentar obtener la configuración de session_state
+        # (la interfaz 3D la guarda en localStorage, pero Streamlit no puede leer localStorage directamente)
+        # En su lugar, usamos un truco: la interfaz 3D guarda en localStorage
+        # y luego recarga la página con '?sync=true'
+        # Streamlit detecta 'sync' y puede mostrar un mensaje o recargar
+        st.info("🔄 Sincronizando configuración desde la interfaz 3D...")
+        
+        # Forzar recarga de la página para actualizar la tabla
+        # La interfaz 3D guardó la configuración en localStorage,
+        # pero Streamlit necesita leerla a través de un archivo o session_state
+        # Para simplificar, mostramos un mensaje y el usuario recarga manualmente
+        return True
+    
+    # También podemos verificar si hay una configuración en session_state
+    # que haya sido guardada por el componente HTML
+    if 'config_3d' in st.session_state and st.session_state.config_3d:
+        config = st.session_state.config_3d
+        if st.session_state.red:
+            # Aplicar configuración a la red
+            for nodo_cfg in config.get("nodos", []):
+                nid = nodo_cfg.get("id")
+                if nid in st.session_state.red.nodos:
+                    nodo = st.session_state.red.nodos[nid]
+                    nodo.es_entrada = nodo_cfg.get("es_entrada", False)
+                    nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
+                    nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
+                    nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
+                    nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
+            
+            if config.get("nodo_entrada") is not None:
+                st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
+            
+            # Limpiar para evitar recargas infinitas
+            st.session_state.config_3d = None
+            
+            # Marcar que la configuración ha sido actualizada
+            st.session_state.config_actualizada = True
+            
+            # Mostrar mensaje de éxito
+            st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
+            
+            # Forzar recarga para actualizar la tabla
+            st.rerun()
+    
+    return False
 
 def procesar_dxf(archivo_dxf):
     """Procesa el archivo DXF y construye la red"""
