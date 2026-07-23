@@ -71,19 +71,6 @@ if 'tmp_dxf_path' not in st.session_state:
     st.session_state.tmp_dxf_path = None
 
 # ================================================================================
-# SELECTOR DE TEMA (INICIALIZAR ANTES DE LOS ESTILOS)
-# ================================================================================
-if 'tema' not in st.session_state:
-    tema_sistema = st.get_option("theme.base")
-    st.session_state.tema = tema_sistema if tema_sistema else "dark"
-
-# ================================================================================
-# APLICAR ESTILOS (ÚNICAMENTE DESDE hydro_styles.py)
-# ================================================================================
-from hydro_styles import apply_enhanced_styles
-apply_enhanced_styles()
-
-# ================================================================================
 # IMPORTACIONES DE MÓDULOS PROPIOS
 # ================================================================================
 from hydro_core import (
@@ -216,18 +203,14 @@ def exportar_resultados():
 
 def mostrar_welcome():
     """Muestra la pantalla de bienvenida"""
-    is_dark = st.session_state.tema == "dark"
-    text_color = "#ffffff" if is_dark else "#1a1a2e"
-    muted_color = "rgba(255,255,255,0.5)" if is_dark else "rgba(0,0,0,0.5)"
-    
-    st.markdown(f"""
+    st.markdown("""
     <div style="text-align:center; padding:2rem 0;">
         <h1 style="font-size:3rem; margin:0;">💧</h1>
         <h2 style="color:#3498db;">Hydro Domus Py</h2>
-        <p style="color:{text_color}; font-size:1.1rem;">
+        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">
             Análisis Hidráulico para Redes Internas de Agua Potable
         </p>
-        <p style="color:{muted_color};">
+        <p style="color:rgba(255,255,255,0.5);">
             Cargue un archivo DXF en la barra de herramientas para comenzar
         </p>
     </div>
@@ -243,10 +226,10 @@ def mostrar_welcome():
     for col, (icon, title, desc) in zip([col1, col2, col3, col4], features):
         with col:
             st.markdown(f"""
-            <div class="metric-card">
+            <div style="background:#1e2a3a; padding:1.5rem; border-radius:12px; text-align:center; border:1px solid #3d3d4d;">
                 <div style="font-size:2.5rem;">{icon}</div>
-                <div style="font-weight:600;margin:0.5rem 0;">{title}</div>
-                <div style="font-size:0.85rem;color:{muted_color};">{desc}</div>
+                <div style="font-weight:600;margin:0.5rem 0; color:#ffffff;">{title}</div>
+                <div style="font-size:0.85rem; color:#bbbbbb;">{desc}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -363,40 +346,7 @@ def generar_reporte_materiales(red):
     return df_tuberias, df_accesorios, total_long, total_tramos, total_acc
 
 # ================================================================================
-# HEADER SUPERIOR CON SELECTOR DE TEMA
-# ================================================================================
-col_titulo, col_selector = st.columns([3, 1])
-
-with col_titulo:
-    st.markdown("""
-    <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span style="font-size: 2rem;">💧</span>
-        <div>
-            <h1 style="margin: 0; font-size: 1.8rem;">Hydro Domus Py</h1>
-            <p style="margin: 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);">
-                Análisis Hidráulico para Redes Internas • NTC 1500 - RAS
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_selector:
-    tema_seleccionado = st.selectbox(
-        "🎨 Tema",
-        options=["🌙 Oscuro", "☀️ Claro"],
-        index=0 if st.session_state.tema == "dark" else 1,
-        label_visibility="collapsed",
-        key="selector_tema"
-    )
-    
-    nuevo_tema = "dark" if "Oscuro" in tema_seleccionado else "light"
-    
-    if nuevo_tema != st.session_state.tema:
-        st.session_state.tema = nuevo_tema
-        st.rerun()
-
-# ================================================================================
-# ESTADO DE LA RED (Header)
+# HEADER SUPERIOR
 # ================================================================================
 status_color, status_text = get_status(st.session_state.red)
 nodos_count = len(st.session_state.red.nodos) if st.session_state.red else 0
