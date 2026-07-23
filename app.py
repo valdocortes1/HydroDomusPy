@@ -15,6 +15,11 @@ import os
 import json
 import base64
 import datetime
+import pandas as pd
+import numpy as np
+import networkx as nx
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 # ================================================================================
 # IMPORTACIONES DE MÓDULOS PROPIOS
@@ -22,14 +27,157 @@ import datetime
 from hydro_core import (
     DXFReader, normalizar_coordenadas, construir_red,
     RedHidraulica, Nodo, Tuberia, HydraulicAnalyzer,
-    generate_3d_plot, generar_perfil_presiones,
+    generate_3d_plot,
     TIPOS_OCUPACION_AGUA, UNIDADES_GASTO, DIAMETROS_PAVCO,
-    ajustar_cotas_relativas, PRESION_MIN_NORMA
+    ajustar_cotas_relativas, PRESION_MIN_NORMA,
+    VEL_MIN_MS, VEL_MAX_MS, PRESION_ENTRADA_MCA
 )
 
 from hydro_styles import apply_enhanced_styles
 from hydro_ui import mostrar_metodologia, panel_configuracion_nodos
-from hydro_utils import generar_excel_bytes, cargar_y_aplicar_configuracion
+from hydro_utils import generar_excel_bytes, cargar_y_aplicar_configuracion, generar_configuracion_json
+
+# ================================================================================
+# CONFIGURACIÓN DE UNIDADES DE DIBUJO
+# ================================================================================
+UNIDADES_DIBUJO = {
+    "mm": {"nombre": "Milímetros", "factor": 1000, "icono": "📏"},
+    "cm": {"nombre": "Centímetros", "factor": 100, "icono": "📐"},
+    "m": {"nombre": "Metros", "factor": 1, "icono": "📏"},
+    "in": {"nombre": "Pulgadas", "factor": 0.0254, "icono": "📐"},
+    "ft": {"nombre": "Pies", "factor": 0.3048, "icono": "📏"},
+}
+
+# ================================================================================
+# FUNCIÓN: GENERAR PERFIL DE PRESIONES
+# ================================================================================
+def generar_perfil_presiones(red):
+    """
+    Genera el perfil de presiones 2D para la ruta más larga desde la entrada.
+    """
+    try:
+        if red.nodo_entrada_id is None:
+            return None
+        
+        # Encontrar la ruta más larga desde la entrada
+        distancias = nx.single_source_dijkstra_path_length(red.grafo, red.nodo_entrada_id)
+        if distancias:
+            nodo_lejano = max(distancias, key=distancias.get)
+            camino = nx.shortest_path(red.grafo, red.nodo_entrada_id, nodo_lejano)
+        else:
+            camino = list(red.nodos.keys())[:10]
+        
+        # Recorrer la ruta y recolectar datos
+        distancias_acum = [0]
+        presiones = [red.nodos[camino[0]].presion_mca or 0]
+        cotas = [red.nodos[camino[0]].z]
+        nodos_ids = [camino[0]]
+        
+        for i in range(1, len(camino)):
+            n_prev = camino[i-1]
+            n_curr = camino[i]
+            tid = red._find_tuberia(n_prev, n_curr)
+            tubo = red.tuberias[tid] if tid else None
+            
+            dist_acum = distancias_acum[-1] + (tubo.longitud_m if tubo else 0)
+            distancias_acum.append(dist_acum)
+            presiones.append(red.nodos[n_curr].presion_mca or 0)
+            cotas.append(red.nodos[n_curr].z)
+            nodos_ids.append(n_curr)
+        
+        # Crear gráfico con subplots
+        fig = make_subplots(
+            rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
+            subplot_titles=("📉 Gradiente Hidráulico (Presión)", "🏔️ Perfil Físico (Elevación Z)")
+        )
+        
+        # Traza de presión
+        fig.add_trace(go.Scatter(
+            x=distancias_acum, y=presiones, mode='lines+markers', name='Presión',
+            line=dict(color='#3498db', width=3),
+            marker=dict(size=8, color='#2980b9', line=dict(width=2, color='white')),
+            customdata=nodos_ids,
+            hovertemplate="<b>Nodo: %{customdata}</b><br>Presión: %{y:.2f} mca<extra></extra>"
+        ), row=1, col=1)
+        
+        # Línea de presión mínima normativa
+        fig.add_hline(
+            y=PRESION_MIN_NORMA, line_dash="dash", line_color="#e74c3c",
+            annotation_text=f"Mínima Normativa ({PRESION_MIN_NORMA} mca)",
+            annotation_position="top right", row=1, col=1
+        )
+        
+        # Traza de cota
+        fig.add_trace(go.Scatter(
+            x=distancias_acum, y=cotas, mode='lines+markers', name='Elevación',
+            fill='tozeroy', fillcolor='rgba(230, 126, 34, 0.15)',
+            line=dict(color='#e67e22', width=3),
+            marker=dict(size=6, color='#d35400'),
+            customdata=nodos_ids,
+            hovertemplate="<b>Nodo: %{customdata}</b><br>Cota Z: %{y:.2f} m<extra></extra>"
+        ), row=2, col=1)
+        
+        fig.update_layout(
+            height=600,
+            hovermode="x unified",
+            showlegend=False,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        fig.update_xaxes(title_text="Distancia acumulada desde la entrada (m)", row=2, col=1)
+        fig.update_yaxes(title_text="Presión (mca)", row=1, col=1)
+        fig.update_yaxes(title_text="Elevación (m)", row=2, col=1)
+        
+        return fig
+    except Exception as e:
+        return None
+
+# ================================================================================
+# FUNCIÓN: GENERAR REPORTE DE MATERIALES
+# ================================================================================
+def generar_reporte_materiales(red):
+    """
+    Genera un reporte de materiales en formato DataFrame.
+    """
+    from hydro_core import diametro_a_numero, DIAMETROS_PAVCO
+    
+    # Calcular longitudes por diámetro
+    longitudes = {}
+    for t in red.tuberias.values():
+        diam = t.diametro_nominal_pulg
+        longitudes[diam] = longitudes.get(diam, 0) + t.longitud_m
+    
+    tramos = {d: int(np.ceil(l / 6.0)) for d, l in longitudes.items()}
+    
+    # Contar accesorios
+    accesorios = {}
+    for acc in red.accesorios:
+        nombre = acc.tipo.replace("_", " ")
+        if "Valvula" in nombre:
+            nombre = nombre.replace("Valvula ", "Válvula ")
+        accesorios[nombre] = accesorios.get(nombre, 0) + 1
+    
+    # DataFrames
+    df_tuberias = pd.DataFrame([
+        {
+            "Diámetro": d,
+            "DI (mm)": DIAMETROS_PAVCO.get(d.replace("-", "_"), 0),
+            "Longitud total (m)": round(l, 2),
+            "Tramos de 6m": tramos[d]
+        }
+        for d, l in sorted(longitudes.items(), key=lambda x: diametro_a_numero(x[0]))
+    ])
+    
+    df_accesorios = pd.DataFrame([
+        {"Tipo": t, "Cantidad": c}
+        for t, c in sorted(accesorios.items(), key=lambda x: -x[1])
+    ])
+    
+    total_long = sum(longitudes.values())
+    total_tramos = sum(tramos.values())
+    total_acc = sum(accesorios.values())
+    
+    return df_tuberias, df_accesorios, total_long, total_tramos, total_acc
 
 # ================================================================================
 # CONFIGURACIÓN DE PÁGINA
@@ -64,6 +212,10 @@ if 'vel_min' not in st.session_state:
     st.session_state.vel_min = 0.5
 if 'vel_max' not in st.session_state:
     st.session_state.vel_max = 2.0
+if 'dxf_loaded' not in st.session_state:
+    st.session_state.dxf_loaded = False
+if 'tmp_dxf_path' not in st.session_state:
+    st.session_state.tmp_dxf_path = None
 
 # ================================================================================
 # APLICAR ESTILOS
@@ -117,7 +269,7 @@ mostrar_metodologia()
 st.markdown('<div class="toolbar">', unsafe_allow_html=True)
 
 # Carga de DXF
-col_upload, col_units, col_spacer = st.columns([2, 1.5, 0.5])
+col_upload, col_units = st.columns([2.5, 2])
 
 with col_upload:
     dxf_file = st.file_uploader(
@@ -130,11 +282,10 @@ with col_upload:
 
 with col_units:
     unidad_seleccionada = st.selectbox(
-        "Unidades",
+        "Unidades del dibujo",
         options=list(UNIDADES_DIBUJO.keys()),
         format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']}",
-        key="unidad_select_top",
-        label_visibility="collapsed"
+        key="unidad_select_top"
     )
     st.session_state.unidad_dibujo = unidad_seleccionada
     st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
@@ -146,21 +297,26 @@ with col_btn1:
     if st.button("🚀 Construir Red", use_container_width=True, key="btn_build"):
         if dxf_file is not None:
             with st.spinner("🔄 Construyendo red..."):
+                # Guardar archivo temporal
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
                     tmp.write(dxf_file.getvalue())
                     tmp_path = tmp.name
+                    st.session_state.tmp_dxf_path = tmp_path
                 
                 try:
                     reader = DXFReader(tmp_path)
                     layers = reader.obtener_layers()
                     
                     if layers:
+                        # Mostrar selector de layers
+                        st.info(f"📋 {len(layers)} layers encontrados")
                         selected = st.multiselect(
                             "Seleccionar layers:",
                             options=layers,
                             default=layers[:3] if len(layers) >= 3 else layers,
                             key="layer_selector_build"
                         )
+                        
                         if selected:
                             lineas_raw = reader.extraer_lineas(selected)
                             if lineas_raw:
@@ -182,13 +338,19 @@ with col_btn1:
                                     red.nodos[primer_nodo].es_entrada = True
                                     ajustar_cotas_relativas(red)
                                 
-                                st.success(f"✅ Red: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
+                                st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
                                 st.rerun()
+                            else:
+                                st.error("❌ No se encontraron líneas en los layers seleccionados")
                 except Exception as e:
                     st.error(f"Error: {e}")
                 finally:
-                    if os.path.exists(tmp_path):
-                        os.unlink(tmp_path)
+                    if st.session_state.tmp_dxf_path and os.path.exists(st.session_state.tmp_dxf_path):
+                        try:
+                            os.unlink(st.session_state.tmp_dxf_path)
+                            st.session_state.tmp_dxf_path = None
+                        except:
+                            pass
         else:
             st.warning("⚠️ Cargue un archivo DXF primero")
 
@@ -203,9 +365,15 @@ with col_btn3:
     if st.button("🚀 Ejecutar", type="primary", use_container_width=True, key="btn_run"):
         if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
             with st.spinner("🚀 Ejecutando análisis..."):
+                # Actualizar variables globales en hydro_core
+                import hydro_core
+                hydro_core.VEL_MIN_MS = st.session_state.vel_min
+                hydro_core.VEL_MAX_MS = st.session_state.vel_max
+                hydro_core.PRESION_ENTRADA_MCA = st.session_state.presion_entrada
+                hydro_core.TIPO_OCUPACION_ACTUAL = st.session_state.tipo_ocupacion
+                
                 analyzer = HydraulicAnalyzer(
                     st.session_state.red,
-                    None,
                     st.session_state.diametro_maximo
                 )
                 analyzer.ejecutar()
@@ -214,6 +382,7 @@ with col_btn3:
                 presiones = [n.presion_mca for n in st.session_state.red.nodos.values() if n.presion_mca is not None]
                 ug_acumulada = st.session_state.red.calcular_ug_acumulada()
                 ug_total = ug_acumulada.get(st.session_state.red.nodo_entrada_id, 0)
+                from hydro_core import caudal_por_ug
                 caudal_total = caudal_por_ug(ug_total, st.session_state.tipo_ocupacion)
                 
                 st.session_state.resultados = {
@@ -251,6 +420,7 @@ with col_btn5:
         st.session_state.red = None
         st.session_state.analyzer = None
         st.session_state.resultados = None
+        st.session_state.dxf_loaded = False
         st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)
@@ -421,7 +591,6 @@ else:
     
     # PESTAÑA 1: CONFIGURACIÓN 3D
     with tabs[0]:
-        # Panel de configuración de nodos
         panel_configuracion_nodos(
             red, 
             st.session_state.tipo_ocupacion,
@@ -470,14 +639,12 @@ else:
                         st.error(f"Error: {e}")
             with col2:
                 if st.button("💾 Guardar Configuración", use_container_width=True):
-                    config = {
-                        "nodo_entrada": red.nodo_entrada_id,
-                        "nodos": [{"id": n.id, "tipo_aparato": n.tipo_aparato, 
-                                   "valvula_tipo": n.valvula_tipo, "valvula_apertura": n.valvula_apertura}
-                                  for n in red.nodos.values()],
-                        "tipo_ocupacion": st.session_state.tipo_ocupacion,
-                        "presion_entrada": st.session_state.presion_entrada
-                    }
+                    config = generar_configuracion_json(
+                        red,
+                        st.session_state.tipo_ocupacion,
+                        st.session_state.presion_entrada,
+                        st.session_state.unidad_dibujo
+                    )
                     config_json = json.dumps(config, indent=2, ensure_ascii=False)
                     b64 = base64.b64encode(config_json.encode()).decode()
                     href = f'<a href="data:application/json;base64,{b64}" download="HydroDomusPy_config_{datetime.datetime.now().strftime("%Y%m%d")}.json">📥 Descargar Configuración</a>'
@@ -545,7 +712,6 @@ else:
     with tabs[5]:
         st.subheader("📦 Estimación de Materiales")
         if st.session_state.analyzer:
-            from hydro_core import generar_reporte_materiales
             df_tuberias, df_accesorios, total_long, total_tramos, total_acc = generar_reporte_materiales(red)
             
             st.markdown("### 📏 Tuberías PVC")
@@ -573,9 +739,3 @@ st.markdown("""
     </span>
 </div>
 """, unsafe_allow_html=True)
-
-# ================================================================================
-# EJECUTAR APLICACIÓN
-# ================================================================================
-if __name__ == "__main__":
-    pass  # Streamlit ejecuta el script directamente
