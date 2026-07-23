@@ -846,7 +846,7 @@ mostrar_metodologia()
 with st.sidebar:
     st.header("⚙️ Parámetros de Cálculo")
     
-    # ===== TIPO DE EDIFICACIÓN CON FÓRMULA =====
+    # ===== TIPO DE EDIFICACIÓN CON FÓRMULA (adaptada al tema) =====
     tipo_ocupacion = st.selectbox(
         "Tipo de Edificación", 
         list(TIPOS_OCUPACION_AGUA.keys()),
@@ -854,22 +854,39 @@ with st.sidebar:
     )
     st.session_state.tipo_ocupacion = tipo_ocupacion
     
-    # Mostrar fórmula del método de Hunter
+    # Detectar tema actual
+    tema_actual = st.get_option("theme.base")
+    is_dark = tema_actual == "dark"
+    
+    # Colores según tema
+    if is_dark:
+        bg_color = "#2d2d2d"
+        text_primary = "#ffffff"
+        text_secondary = "#bbbbbb"
+        formula_color = "#3498db"
+        border_color = "#3498db"
+    else:
+        bg_color = "#f0f0f0"
+        text_primary = "#1a1a2e"
+        text_secondary = "#555555"
+        formula_color = "#2980b9"
+        border_color = "#2980b9"
+    
     info_ocup = TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {})
     formula = info_ocup.get("formula", "Q = 0.2 * √UG + 0.5")
     descripcion = info_ocup.get("descripcion", "")
     
     st.markdown(f"""
     <div style="
-        background: #2d2d2d; 
+        background: {bg_color}; 
         padding: 8px 12px; 
         border-radius: 6px; 
         margin: 4px 0 10px 0;
-        border-left: 3px solid #3498db;
+        border-left: 3px solid {border_color};
     ">
-        <span style="font-size: 0.8rem; color: #bbbbbb;">📐 Fórmula de Hunter:</span><br>
-        <span style="font-size: 0.9rem; font-weight: 600; color: #3498db;">{formula}</span><br>
-        <span style="font-size: 0.7rem; color: #888888;">{descripcion}</span>
+        <span style="font-size: 0.8rem; color: {text_secondary};">📐 Fórmula de Hunter:</span><br>
+        <span style="font-size: 0.9rem; font-weight: 600; color: {formula_color};">{formula}</span><br>
+        <span style="font-size: 0.7rem; color: {text_secondary};">{descripcion}</span>
     </div>
     """, unsafe_allow_html=True)
     
