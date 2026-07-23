@@ -81,18 +81,22 @@ if 'nodos_raw' not in st.session_state:
 def detectar_sincronizacion_3d():
     """
     Detecta si hay una solicitud de sincronización desde la interfaz 3D.
+    Lee la configuración desde los parámetros de la URL y actualiza la red.
     """
     query_params = st.query_params
     
-    # Verificar si hay un parámetro 'sync' en la URL
-    if 'sync' in query_params:
-        # Limpiar el parámetro
-        st.query_params.clear()
-        
-        # Intentar obtener la configuración de session_state
-        if 'config_3d' in st.session_state and st.session_state.config_3d:
-            config = st.session_state.config_3d
-            if st.session_state.red:
+    # Verificar si hay una configuración en la URL
+    if 'sync_config' in query_params:
+        try:
+            # Decodificar la configuración
+            config_json = query_params['sync_config']
+            config = json.loads(config_json)
+            
+            # Limpiar el parámetro para evitar bucles
+            st.query_params.clear()
+            
+            if st.session_state.red and config:
+                # Aplicar configuración a la red
                 for nodo_cfg in config.get("nodos", []):
                     nid = nodo_cfg.get("id")
                     if nid in st.session_state.red.nodos:
@@ -106,13 +110,19 @@ def detectar_sincronizacion_3d():
                 if config.get("nodo_entrada") is not None:
                     st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
                 
-                st.session_state.config_3d = None
                 st.session_state.config_actualizada = True
+                
+                # Mostrar mensaje de éxito (usando st.success en el área principal)
                 st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
                 
-                # 👇 IMPORTANTE: Usar st.rerun() en lugar de recargar la página
+                # Actualizar la página para reflejar los cambios
                 st.rerun()
-        return True
+                return True
+                
+        except Exception as e:
+            st.error(f"Error al procesar la configuración: {e}")
+            st.query_params.clear()
+            return False
     
     return False
 
@@ -251,28 +261,23 @@ function sincronizarTablaDirecta() {{
         }}))
     }};
     
-    // Guardar en localStorage para que Streamlit lo pueda leer
+    // Codificar la configuración como JSON para pasarla en la URL
+    const configJson = JSON.stringify(config);
+    const encoded = encodeURIComponent(configJson);
+    
+    // Guardar también en localStorage para persistencia
     try {{
-        localStorage.setItem('hydro_config_3d', JSON.stringify(config));
-        console.log("✅ Configuración guardada en localStorage");
-    }} catch(e) {{
-        console.warn("Error guardando en localStorage:", e);
-    }}
+        localStorage.setItem('hydro_config_3d', configJson);
+    }} catch(e) {{}}
     
     // Feedback visual
     btn.classList.add('active');
     status.innerHTML = '✅ ¡Configuración sincronizada!';
     status.style.color = '#2ecc71';
     
-    // 👇 IMPORTANTE: Recargar la página padre (Streamlit), no el iframe
+    // Recargar el iframe con la configuración en la URL
     setTimeout(() => {{
-        try {{
-            // Intentar recargar la página padre (Streamlit)
-            window.parent.location.reload();
-        }} catch(e) {{
-            // Fallback: recargar la página actual
-            window.location.reload();
-        }}
+        window.location.href = window.location.pathname + '?sync_config=' + encoded;
     }}, 300);
 }}
 
