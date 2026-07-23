@@ -222,7 +222,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos con sincronización directa"""
+    """Genera HTML para la configuración interactiva de nodos"""
     
     if not nodos_data or not tuberias_data:
         return "<p style='color:red;'>⚠️ Error: No hay datos de red para mostrar</p>"
@@ -248,8 +248,7 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .btn-secondary:hover{{background:#5d6d7e}}
 .btn-sync{{background:#8e44ad}}
 .btn-sync:hover{{background:#6c3483}}
-.btn-sync.active{{background:#27ae60;animation:pulse 1s ease-in-out}}
-@keyframes pulse{{0%{{transform:scale(1)}}50%{{transform:scale(1.05)}}100%{{transform:scale(1)}}}}
+.btn-sync.active{{background:#27ae60}}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
@@ -273,12 +272,12 @@ label{{color:#ffffff}}
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
 
-<!-- Botón de sincronización directa -->
+<!-- Botón de sincronización -->
 <div style="margin-top:8px;">
     <button class="btn btn-sync" onclick="sincronizarTablaDirecta()" id="syncBtn" style="width:100%; font-size:11px; padding:6px;">
-        🔄 Sincronizar con Tabla Manual
+        💾 Guardar Configuración en la Tabla
     </button>
-    <p class="sync-status" id="syncStatus">Click para actualizar la tabla manual con la configuración actual</p>
+    <p class="sync-status" id="syncStatus">Guarda la configuración actual para cargarla en la tabla manual</p>
 </div>
 
 <!-- Área de carga de configuración -->
@@ -300,7 +299,7 @@ label{{color:#ffffff}}
 </div>
 <script>
 // ============================================================
-// DATOS DE LA RED (convertidos a JSON)
+// DATOS DE LA RED
 // ============================================================
 const nodos = {json.dumps(nodos_data)};
 const tuberias = {json.dumps(tuberias_data)};
@@ -314,7 +313,7 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// FUNCIÓN PARA SINCRONIZAR DIRECTAMENTE CON LA TABLA MANUAL
+// FUNCIÓN PARA GUARDAR CONFIGURACIÓN EN sessionStorage
 // ============================================================
 function sincronizarTablaDirecta() {{
     const btn = document.getElementById('syncBtn');
@@ -333,30 +332,18 @@ function sincronizarTablaDirecta() {{
         }}))
     }};
     
-    // Codificar la configuración como JSON
-    const configJson = JSON.stringify(config);
-    const encoded = encodeURIComponent(configJson);
-    
-    // Feedback visual
-    btn.classList.add('active');
-    status.innerHTML = '✅ ¡Configuración sincronizada! Recargando tabla...';
-    status.style.color = '#2ecc71';
-    
-    // 👇 GUARDAR EN sessionStorage PARA QUE STREAMLIT LO LEA
+    // Guardar en sessionStorage
     try {{
-        sessionStorage.setItem('hydro_config_3d_sync', configJson);
+        sessionStorage.setItem('hydro_config_3d_sync', JSON.stringify(config));
         console.log("✅ Configuración guardada en sessionStorage");
+        btn.classList.add('active');
+        status.innerHTML = '✅ Configuración guardada. Ve a la tabla manual y haz clic en "Cargar desde 3D"';
+        status.style.color = '#2ecc71';
     }} catch(e) {{
-        console.warn("Error guardando en sessionStorage:", e);
+        console.warn("Error guardando:", e);
+        status.innerHTML = '❌ Error al guardar la configuración';
+        status.style.color = '#e74c3c';
     }}
-    
-    // 👇 RECARGAR EL IFRAME CON UN PARÁMETRO EN LA URL
-    // Esto hará que Streamlit detecte 'sync=true' y lea sessionStorage
-    setTimeout(() => {{
-        const currentUrl = new URL(window.location.href);
-        currentUrl.searchParams.set('sync', 'true');
-        window.location.href = currentUrl.toString();
-    }}, 300);
 }}
 
 // ============================================================
@@ -1181,6 +1168,32 @@ if st.session_state.red is not None:
                 type=["json"],
                 key="config_uploader"
             )
+            
+            # ==========================================
+            # 🔧 BOTÓN PARA CARGAR DESDE LA INTERFAZ 3D
+            # ==========================================
+            if st.button("📥 Cargar desde Interfaz 3D", use_container_width=True, key="cargar_3d"):
+                # Leer la configuración desde sessionStorage usando JavaScript
+                st.markdown("""
+                <script>
+                (function() {
+                    try {
+                        const configJson = sessionStorage.getItem('hydro_config_3d_sync');
+                        if (configJson) {
+                            const encoded = encodeURIComponent(configJson);
+                            const currentUrl = new URL(window.location.href);
+                            currentUrl.searchParams.set('cargar_3d', encoded);
+                            window.location.href = currentUrl.toString();
+                        } else {
+                            alert('No hay configuración guardada en la interfaz 3D. Primero guarda la configuración en la interfaz 3D.');
+                        }
+                    } catch(e) {
+                        alert('Error al leer la configuración: ' + e.message);
+                    }
+                })();
+                </script>
+                """, unsafe_allow_html=True)
+                st.info("🔄 Cargando configuración desde la interfaz 3D...")
         
         # ==========================================
         # 🔧 LEER CONFIGURACIÓN DESDE SESSION_STATE
