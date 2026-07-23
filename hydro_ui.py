@@ -8,6 +8,7 @@
 import streamlit as st
 import json
 import datetime
+import pandas as pd
 
 from hydro_core import (
     TIPOS_OCUPACION_AGUA, UNIDADES_GASTO, DIAMETROS_PAVCO,
@@ -101,13 +102,9 @@ def mostrar_metodologia():
         
         #### 5. 🚪 Estrangulamiento de Válvulas
         
-        Modela cierres parciales aplicando una penalización cuadrática a la longitud equivalente de la válvula, simulando la restricción física del área transversal:
+        Modela cierres parciales aplicando una penalización cuadrática a la longitud equivalente de la válvula:
         
         $$Leq_{efectivo} = Leq_{base} \cdot \left(\frac{100}{Apertura}\right)^2$$
-        
-        **Donde:**
-        - $Apertura$ = Porcentaje de apertura de la válvula (0% - 100%)
-        - Factor de penalización: $F = \left(\frac{100}{Apertura}\right)^2$
         
         **Ejemplo práctico:**
         - Válvula al 100%: Factor = 1.0 (pérdida normal)
