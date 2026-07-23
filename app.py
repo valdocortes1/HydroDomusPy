@@ -92,10 +92,6 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # FUNCIÓN PARA CONFIGURACIÓN 3D INTERACTIVA
 # ================================================================================
 
-# ================================================================================
-# FUNCIÓN PARA CONFIGURACIÓN 3D INTERACTIVA - CORREGIDA
-# ================================================================================
-
 def generar_html_config(nodos_data, tuberias_data):
     """Genera HTML para la configuración interactiva de nodos"""
     
@@ -161,7 +157,7 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// ACTUALIZAR GRÁFICO 3D
+// ACTUALIZAR GRÁFICO 3D - CORREGIDO
 // ============================================================
 function actualizarGrafico() {{
     // Verificar que hay datos
@@ -179,12 +175,13 @@ function actualizarGrafico() {{
     }}
     
     // Preparar datos para los nodos
-    const nx=[], ny=[], nz=[], col=[], tam=[], labels=[];
+    const nx=[], ny=[], nz=[], col=[], tam=[], labels=[], customdata=[];
     for(const n of nodos) {{
         nx.push(n.x);
         ny.push(n.y);
         nz.push(n.z);
         labels.push(String(n.id));
+        customdata.push(n.id);  // Guardamos el ID del nodo en customdata
         
         if(n.id === entradaId) {{
             col.push('#e74c3c');
@@ -246,7 +243,7 @@ function actualizarGrafico() {{
             text: labels,
             textposition: 'top center',
             textfont: {{size: 10, color: '#ffffff'}},
-            customdata: nodos.map(n => n.id),
+            customdata: customdata,
             hoverinfo: 'text',
             hovertext: nodos.map(n => `Nodo ${{n.id}}<br>X: ${{n.x.toFixed(2)}}<br>Y: ${{n.y.toFixed(2)}}<br>Z: ${{n.z.toFixed(2)}}`)
         }}
@@ -254,13 +251,21 @@ function actualizarGrafico() {{
     
     Plotly.newPlot('main', traces, layout);
     
-    // Evento click
+    // ============================================================
+    // EVENTO CLICK - CORREGIDO
+    // ============================================================
     document.getElementById('main').on('plotly_click', function(data) {{
         if(data.points && data.points[0]) {{
-            const idx = data.points[0].pointIndex;
-            if (idx !== undefined && idx < nodos.length) {{
-                const nodo = nodos[idx];
-                if(nodo) mostrarPanel(nodo);
+            // Obtener el customdata (ID del nodo)
+            const nodoId = data.points[0].customdata;
+            console.log("Click en nodo ID:", nodoId);
+            
+            // Buscar el nodo por ID
+            const nodo = nodos.find(n => n.id === nodoId);
+            if(nodo) {{
+                mostrarPanel(nodo);
+            }} else {{
+                console.warn("Nodo no encontrado para ID:", nodoId);
             }}
         }}
     }});
