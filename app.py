@@ -113,24 +113,21 @@ if 'nodos_raw' not in st.session_state:
 def detectar_sincronizacion_3d():
     """
     Detecta si hay una solicitud de sincronización desde la interfaz 3D.
-    Lee la configuración desde sessionStorage (via JavaScript) y actualiza la red.
+    Lee la configuración desde los parámetros de la URL.
     """
-    # Verificar si hay un parámetro 'sync' en la URL (indicador de sincronización)
     query_params = st.query_params
     
-    if 'sync' in query_params:
-        # Limpiar el parámetro para evitar bucles
-        st.query_params.clear()
-        
-        # Intentar obtener la configuración desde session_state
-        # (La interfaz 3D guarda en sessionStorage, pero Streamlit no puede leerlo directamente)
-        # En su lugar, usamos un enfoque: la interfaz 3D guarda en sessionStorage
-        # y luego recarga el iframe. Streamlit detecta 'sync' y aplica la configuración
-        # que está en session_state (cargada desde el JSON o desde la interfaz)
-        
-        if 'config_3d' in st.session_state and st.session_state.config_3d:
-            config = st.session_state.config_3d
-            if st.session_state.red:
+    # Verificar si hay una configuración en la URL (enviada por JavaScript)
+    if 'sync_config' in query_params:
+        try:
+            # Decodificar la configuración
+            config_json = query_params['sync_config']
+            config = json.loads(config_json)
+            
+            # Limpiar el parámetro
+            st.query_params.clear()
+            
+            if st.session_state.red and config:
                 # Aplicar configuración a la red
                 for nodo_cfg in config.get("nodos", []):
                     nid = nodo_cfg.get("id")
@@ -145,18 +142,20 @@ def detectar_sincronizacion_3d():
                 if config.get("nodo_entrada") is not None:
                     st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
                 
-                # Marcar que la configuración ha sido actualizada
                 st.session_state.config_actualizada = True
-                
-                # Mostrar mensaje de éxito
                 st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
                 
-                # Limpiar para evitar recargas infinitas
-                st.session_state.config_3d = None
+                # Guardar en session_state para que la tabla lo lea
+                st.session_state.config_3d = config
                 
-                # Solo actualizar la página (no recargar completamente)
+                # Actualizar la página
                 st.rerun()
-        return True
+                return True
+                
+        except Exception as e:
+            st.error(f"Error al procesar la configuración: {e}")
+            st.query_params.clear()
+            return False
     
     return False
 
@@ -295,23 +294,29 @@ function sincronizarTablaDirecta() {{
         }}))
     }};
     
-    // Guardar en sessionStorage para que Streamlit lo pueda leer
-    try {{
-        sessionStorage.setItem('hydro_config_3d_sync', JSON.stringify(config));
-        console.log("✅ Configuración guardada en sessionStorage");
-    }} catch(e) {{
-        console.warn("Error guardando:", e);
-    }}
+    // Codificar la configuración como JSON
+    const configJson = JSON.stringify(config);
+    const encoded = encodeURIComponent(configJson);
     
     // Feedback visual
     btn.classList.add('active');
-    status.innerHTML = '✅ ¡Configuración sincronizada!';
+    status.innerHTML = '✅ ¡Configuración sincronizada! Recargando tabla...';
     status.style.color = '#2ecc71';
     
-    // Recargar el iframe para que Streamlit lea la configuración
-    setTimeout(() => {{
-        location.reload();
-    }}, 300);
+    // Enviar la configuración a Streamlit usando window.parent.postMessage
+    // Esto evita recargar el iframe
+    try {{
+        window.parent.postMessage({{
+            type: 'sync_config',
+            config: configJson
+        }}, '*');
+        console.log("✅ Mensaje enviado a Streamlit");
+        status.innerHTML = '✅ ¡Configuración enviada! Actualizando tabla...';
+    }} catch(e) {{
+        console.error("Error enviando mensaje:", e);
+        // Fallback: recargar el iframe con la configuración en la URL
+        window.location.href = window.location.pathname + '?sync_config=' + encoded;
+    }}
 }}
 
 // ============================================================
@@ -681,6 +686,19 @@ function guardar() {{
 // ============================================================
 // INICIALIZAR
 // ============================================================
+// Escuchar mensajes de Streamlit para actualizar la configuración
+window.addEventListener('message', function(event) {{
+    try {{
+        const data = JSON.parse(event.data);
+        if (data.type === 'aplicar_configuracion') {{
+            console.log("📥 Recibiendo configuración desde Streamlit:", data.config);
+            aplicarConfiguracion(data.config);
+        }}
+    }} catch(e) {{
+        // Ignorar mensajes que no son JSON
+    }}
+}});
+
 actualizarGrafico();
 actualizarResumen();
 </script></body></html>"""
@@ -1128,43 +1146,21 @@ if st.session_state.red is not None:
     with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
         st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
         
-        col_load, col_save = st.columns([1, 1])
-        
-        with col_load:
-            config_file = st.file_uploader(
-                "📂 Cargar configuración (.json)", 
-                type=["json"],
-                key="config_uploader"
-            )
-        
-        # Cargar configuración desde archivo
-        loaded_config = None
-        if config_file is not None:
-            try:
-                loaded_config = json.load(config_file)
-                st.success("✅ Configuración cargada exitosamente")
-            except Exception as e:
-                st.error(f"Error cargando configuración: {e}")
-        
-        # Obtener datos de la red actual
-        nodos_ids = list(red.nodos.keys())
-        default_entrada_idx = 0
-        aparatos_list = [""] * len(nodos_ids)
-        valvulas_list = [""] * len(nodos_ids)
-        aperturas_list = [100.0] * len(nodos_ids)
-        
-        # Si hay configuración cargada, usarla
-        if loaded_config:
-            if loaded_config.get("nodo_entrada") in nodos_ids:
-                default_entrada_idx = nodos_ids.index(loaded_config["nodo_entrada"])
-            config_nodos = {n["id"]: n for n in loaded_config.get("nodos", [])}
-            for i, nid in enumerate(nodos_ids):
-                if nid in config_nodos:
-                    aparatos_list[i] = config_nodos[nid].get("tipo_aparato", "")
-                    valvulas_list[i] = config_nodos[nid].get("valvula_tipo", "")
-                    aperturas_list[i] = config_nodos[nid].get("valvula_apertura", 100.0)
+        # Verificar si hay una configuración recién sincronizada
+        if 'config_3d' in st.session_state and st.session_state.config_3d:
+            config_3d = st.session_state.config_3d
+            # Usar la configuración de la interfaz 3D
+            nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, config_3d)
+            # Limpiar para evitar recargas infinitas
+            # st.session_state.config_3d = None  # No limpiar aquí para que la tabla lo use
         else:
             # Usar el estado actual de la red
+            nodos_ids = list(red.nodos.keys())
+            default_entrada_idx = 0
+            aparatos_list = [""] * len(nodos_ids)
+            valvulas_list = [""] * len(nodos_ids)
+            aperturas_list = [100.0] * len(nodos_ids)
+            
             for i, nid in enumerate(nodos_ids):
                 nodo = red.nodos[nid]
                 aparatos_list[i] = nodo.tipo_aparato or ""
@@ -1172,6 +1168,7 @@ if st.session_state.red is not None:
                 aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
                 if nodo.es_entrada:
                     default_entrada_idx = i
+    
 
         col1, col2 = st.columns([1, 2.5])
         with col1:
