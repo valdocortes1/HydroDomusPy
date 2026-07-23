@@ -1349,6 +1349,333 @@ if st.session_state.red is not None:
             for a in red.accesorios:
                 acc_data[a.tipo] = acc_data.get(a.tipo, 0) + 1
             st.dataframe(
+                pd.DataFrame([# ===== PASO 2: CONFIGURACIÓN DE NODOS (si hay red) =====
+if st.session_state.red is not None:
+    st.markdown("---")
+    st.subheader("2. Configuración de Nodos")
+    
+    red = st.session_state.red
+    
+    # ==========================================
+    # OPCIÓN 1: CONFIGURACIÓN 3D INTERACTIVA
+    # ==========================================
+    with st.expander("🎯 Configuración 3D Interactiva (Recomendado)", expanded=True):
+        st.markdown("""
+        **💡 Haga clic en cualquier nodo del gráfico 3D para configurarlo.**
+        - 🚰 Asigne el nodo de entrada
+        - 🚽 Asigne aparatos sanitarios
+        - 🔧 Configure válvulas y su apertura
+        """)
+        
+        # Preparar datos para el HTML interactivo
+        nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
+                       "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
+                       "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada,
+                       "valvula_apertura": getattr(n, 'valvula_apertura', 100)} 
+                      for n in red.nodos.values()]
+        
+        tuberias_data = []
+        for t in red.tuberias.values():
+            n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
+            tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
+                                  "x2": n2.x, "y2": n2.y, "z2": n2.z})
+        
+        # Generar HTML interactivo
+        html_content = generar_html_config(nodos_data, tuberias_data)
+        
+        # Mostrar el componente HTML
+        st.components.v1.html(html_content, height=650, scrolling=True)
+        
+        st.info("💡 Después de configurar en 3D, la tabla manual se actualizará automáticamente.")
+    
+    # ==========================================
+    # OPCIÓN 2: TABLA MANUAL (alternativa)
+    # ==========================================
+    with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
+        st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
+        
+        col_load, col_save = st.columns([1, 1])
+        
+        with col_load:
+            config_file = st.file_uploader(
+                "📂 Cargar configuración (.json)", 
+                type=["json"],
+                key="config_uploader"
+            )
+        
+        # Cargar configuración desde archivo
+        loaded_config = None
+        if config_file is not None:
+            try:
+                loaded_config = json.load(config_file)
+                st.success("✅ Configuración cargada exitosamente")
+            except Exception as e:
+                st.error(f"Error cargando configuración: {e}")
+        
+        # Obtener datos de la red actual
+        nodos_ids = list(red.nodos.keys())
+        default_entrada_idx = 0
+        aparatos_list = [""] * len(nodos_ids)
+        valvulas_list = [""] * len(nodos_ids)
+        aperturas_list = [100.0] * len(nodos_ids)
+        
+        # Si hay configuración cargada, usarla
+        if loaded_config:
+            if loaded_config.get("nodo_entrada") in nodos_ids:
+                default_entrada_idx = nodos_ids.index(loaded_config["nodo_entrada"])
+            config_nodos = {n["id"]: n for n in loaded_config.get("nodos", [])}
+            for i, nid in enumerate(nodos_ids):
+                if nid in config_nodos:
+                    aparatos_list[i] = config_nodos[nid].get("tipo_aparato", "")
+                    valvulas_list[i] = config_nodos[nid].get("valvula_tipo", "")
+                    aperturas_list[i] = config_nodos[nid].get("valvula_apertura", 100.0)
+        else:
+            # Usar el estado actual de la red
+            for i, nid in enumerate(nodos_ids):
+                nodo = red.nodos[nid]
+                aparatos_list[i] = nodo.tipo_aparato or ""
+                valvulas_list[i] = nodo.valvula_tipo or ""
+                aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
+                if nodo.es_entrada:
+                    default_entrada_idx = i
+
+        col1, col2 = st.columns([1, 2.5])
+        with col1:
+            nodo_entrada = st.selectbox(
+                "🚰 ID Nodo Entrada:", 
+                options=nodos_ids, 
+                index=default_entrada_idx,
+                key="nodo_entrada_main"
+            )
+            
+        with col2:
+            df_config = pd.DataFrame({
+                "ID Nodo": nodos_ids, 
+                "Aparato": aparatos_list, 
+                "Válvula": valvulas_list, 
+                "Apertura (%)": aperturas_list
+            })
+            edited_df = st.data_editor(
+                df_config,
+                column_config={
+                    "Aparato": st.column_config.SelectboxColumn(
+                        "Aparato", 
+                        options=[""] + list(UNIDADES_GASTO.keys())
+                    ),
+                    "Válvula": st.column_config.SelectboxColumn(
+                        "Válvula", 
+                        options=["", "Compuerta", "Globo", "Check", "Esfera"]
+                    ),
+                    "Apertura (%)": st.column_config.NumberColumn(
+                        "Apertura (%)", 
+                        min_value=0.0, 
+                        max_value=100.0, 
+                        step=5.0
+                    )
+                },
+                disabled=["ID Nodo"], 
+                use_container_width=True, 
+                hide_index=True,
+                key="nodos_editor"
+            )
+
+        config_to_save = {
+            "nodo_entrada": nodo_entrada, 
+            "nodos": []
+        }
+        for _, row in edited_df.iterrows():
+            config_to_save["nodos"].append({
+                "id": row["ID Nodo"], 
+                "tipo_aparato": row["Aparato"], 
+                "valvula_tipo": row["Válvula"], 
+                "valvula_apertura": row["Apertura (%)"]
+            })
+        
+        with col_save:
+            st.write("<br>", unsafe_allow_html=True)
+            st.download_button(
+                "💾 Guardar Progreso (.json)", 
+                data=json.dumps(config_to_save, indent=2, ensure_ascii=False), 
+                file_name="Config.json",
+                key="download_config"
+            )
+
+    # ===== PASO 3: SIMULACIÓN Y RESULTADOS =====
+    st.markdown("---")
+    st.subheader("3. Simulación y Resultados")
+    
+    col_run, col_export = st.columns(2)
+    
+    with col_run:
+        if st.button("🚀 Ejecutar Análisis Hidráulico", type="primary", use_container_width=True):
+            with st.spinner("Calculando red..."):
+                red = st.session_state.red
+                
+                # Resetear configuración de nodos
+                for n in red.nodos.values():
+                    n.es_entrada = False
+                    n.tipo_aparato = ""
+                    n.valvula_tipo = ""
+                    n.valvula_apertura = 100.0
+                    n.valvula_cerrada = False
+                
+                # Aplicar configuración de la tabla (si existe)
+                if 'edited_df' in locals():
+                    for _, row in edited_df.iterrows():
+                        nid = row["ID Nodo"]
+                        if nid in red.nodos:
+                            red.nodos[nid].tipo_aparato = row["Aparato"] if row["Aparato"] else ""
+                            red.nodos[nid].valvula_tipo = row["Válvula"] if row["Válvula"] else ""
+                            red.nodos[nid].valvula_apertura = float(row["Apertura (%)"])
+                            red.nodos[nid].valvula_cerrada = float(row["Apertura (%)"]) == 0
+                
+                # Configurar nodo de entrada
+                red.nodo_entrada_id = nodo_entrada
+                red.nodos[nodo_entrada].es_entrada = True
+                ajustar_cotas_relativas(red)
+                
+                # Ejecutar análisis
+                analyzer = HydraulicAnalyzer(
+                    red, 
+                    diametro_maximo=st.session_state.diametro_maximo
+                )
+                analyzer.ejecutar()
+                st.session_state.analyzer = analyzer
+                
+                # Calcular estadísticas
+                presiones = [n.presion_mca for n in red.nodos.values() if n.presion_mca is not None]
+                ug_acumulada = red.calcular_ug_acumulada()
+                ug_total = ug_acumulada.get(red.nodo_entrada_id, 0)
+                caudal_total = caudal_por_ug(ug_total, st.session_state.tipo_ocupacion)
+                
+                st.session_state.resultados = {
+                    'presiones': presiones,
+                    'ug_total': ug_total,
+                    'caudal_total': caudal_total,
+                    'cumple': min(presiones) >= PRESION_MIN_NORMA if presiones else False
+                }
+                st.success("✅ Análisis completado exitosamente.")
+                st.rerun()
+    
+    with col_export:
+        if st.session_state.resultados:
+            if st.button("📊 Exportar Reporte Excel", use_container_width=True):
+                excel_data = generar_excel_bytes(
+                    st.session_state.red,
+                    st.session_state.tipo_ocupacion,
+                    st.session_state.presion_entrada,
+                    PRESION_MIN_NORMA
+                )
+                b64 = base64.b64encode(excel_data).decode()
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="HydroDomusPy_Reporte_{datetime.datetime.now().strftime("%Y%m%d")}.xlsx">📥 Descargar Excel</a>'
+                st.markdown(href, unsafe_allow_html=True)
+                st.success("✅ Excel generado")
+    
+    # ===== RESULTADOS =====
+    if st.session_state.resultados:
+        resultados = st.session_state.resultados
+        red = st.session_state.red
+        
+        # Métricas rápidas
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("🔢 Nodos", len(red.nodos))
+        col2.metric("🔗 Tuberías", len(red.tuberias))
+        col3.metric("🔧 Accesorios", len(red.accesorios))
+        col4.metric("💧 Caudal", f"{resultados['caudal_total']:.2f} L/s")
+        col5.metric("📊 UG totales", f"{resultados['ug_total']:.0f}")
+        
+        st.divider()
+        
+        # Pestañas de resultados
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "🌐 Modelo 3D", 
+            "📈 Ruta Crítica", 
+            "📍 Nodos", 
+            "📏 Tuberías", 
+            "🔧 Accesorios", 
+            "📋 Materiales"
+        ])
+        
+        with tab1:
+            st.plotly_chart(
+                generate_3d_plot(red, st.session_state.presion_entrada), 
+                use_container_width=True, 
+                key="grafico_resultados"
+            )
+        
+        with tab2:
+            st.markdown("#### Perfil de la ruta más alejada desde el nodo de entrada")
+            st.info("💡 Pasa el cursor sobre la gráfica para ver simultáneamente la elevación y la presión en cada nodo.")
+            fig_perfil = generar_perfil_presiones(red)
+            if fig_perfil:
+                st.plotly_chart(fig_perfil, use_container_width=True)
+            else:
+                st.warning("No se pudo generar el perfil. Asegúrese de haber configurado un nodo de entrada válido.")
+        
+        with tab3:
+            datos_nodos = []
+            for n in red.nodos.values():
+                datos_nodos.append({
+                    "ID": n.id,
+                    "X (m)": round(n.x, 2),
+                    "Y (m)": round(n.y, 2),
+                    "Z (m)": round(n.z, 2),
+                    "Presión (mca)": round(n.presion_mca, 2) if n.presion_mca else None,
+                    "Aparato": n.tipo_aparato or "-",
+                    "Válvula": f"{n.valvula_tipo} ({n.valvula_apertura}%)" if n.valvula_tipo else "-"
+                })
+            st.dataframe(pd.DataFrame(datos_nodos), use_container_width=True, hide_index=True)
+        
+        with tab4:
+            datos_tubos = []
+            for t in red.tuberias.values():
+                datos_tubos.append({
+                    "ID": t.id,
+                    "Inicio": t.nodo_inicio,
+                    "Fin": t.nodo_fin,
+                    "Longitud (m)": round(t.longitud_m, 2),
+                    "Diam. Nom.": t.diametro_nominal_pulg,
+                    "Caudal (L/s)": round(t.caudal_lps, 3),
+                    "Vel (m/s)": round(t.velocidad_ms, 2),
+                    "Pérdida (mca)": round(t.perdida_mca, 3)
+                })
+            st.dataframe(pd.DataFrame(datos_tubos), use_container_width=True, hide_index=True)
+        
+        with tab5:
+            datos_acc = []
+            for a in red.accesorios:
+                datos_acc.append({
+                    "ID": a.id,
+                    "Tipo": a.tipo.replace("_", " "),
+                    "Nodo": a.nodo_id,
+                    "Leq (m)": round(a.longitud_equivalente_m, 2),
+                    "Pérdida (mca)": round(a.perdida_mca, 4)
+                })
+            st.dataframe(pd.DataFrame(datos_acc), use_container_width=True, hide_index=True)
+        
+        with tab6:
+            st.markdown("### 📏 Tuberías PVC")
+            longitudes = {}
+            for t in red.tuberias.values():
+                diam = t.diametro_nominal_pulg
+                longitudes[diam] = longitudes.get(diam, 0) + t.longitud_m
+            
+            tubos_data, total_tramos = [], 0
+            for diam in sorted(longitudes.keys(), key=lambda x: diametro_a_numero(x)):
+                tramos = int(math.ceil(longitudes[diam] / 6.0))
+                total_tramos += tramos
+                tubos_data.append({
+                    "Diámetro": diam, 
+                    "Longitud (m)": round(longitudes[diam], 2), 
+                    "Tubos 6m": tramos
+                })
+            st.dataframe(pd.DataFrame(tubos_data), use_container_width=True, hide_index=True)
+            
+            st.markdown("### 🔧 Accesorios detectados")
+            acc_data = {}
+            for a in red.accesorios:
+                acc_data[a.tipo] = acc_data.get(a.tipo, 0) + 1
+            st.dataframe(
                 pd.DataFrame([
                     {"Accesorio": k.replace("_", " "), "Cantidad": v} 
                     for k, v in acc_data.items()
