@@ -93,7 +93,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos con apertura de válvula"""
+    """Genera HTML para la configuración interactiva de nodos con carga de configuración"""
     
     # Verificar que los datos no estén vacíos
     if not nodos_data or not tuberias_data:
@@ -116,6 +116,8 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .btn-success:hover{{background:#229954}}
 .btn-danger{{background:#e74c3c}}
 .btn-danger:hover{{background:#c0392b}}
+.btn-secondary{{background:#7f8c8d}}
+.btn-secondary:hover{{background:#5d6d7e}}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
@@ -125,6 +127,9 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 select{{font-size:10px;padding:3px;margin:3px 0;width:100%;border-radius:4px;border:1px solid #444444;background:#2d2d2d;color:#ffffff}}
 input[type="range"]{{width:100%;margin:5px 0;accent-color:#3498db}}
 .apertura-label{{font-size:10px;color:#aaaaaa;display:flex;justify-content:space-between}}
+.file-input{{display:none}}
+.upload-area{{border:2px dashed #444;border-radius:8px;padding:8px;text-align:center;cursor:pointer;margin:5px 0;font-size:10px;color:#aaaaaa;transition:all 0.3s}}
+.upload-area:hover{{border-color:#3498db;background:rgba(52,152,219,0.1)}}
 hr{{margin:8px 0;border-color:#444444}}
 label{{color:#ffffff}}
 </style>
@@ -135,9 +140,19 @@ label{{color:#ffffff}}
 <div id="sidebar">
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
-<div style="text-align:center; margin-top:10px">
+
+<!-- Área de carga de configuración -->
+<div style="margin-top:8px; border:1px solid #444; border-radius:6px; padding:6px;">
+    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()" style="flex:1; font-size:10px; padding:4px 6px;">📂 Cargar JSON</button>
+        <input type="file" id="fileInput" class="file-input" accept=".json" onchange="cargarConfiguracion(event)">
+        <span style="font-size:8px; color:#666;" id="fileStatus">Ningún archivo cargado</span>
+    </div>
+</div>
+
+<div style="text-align:center; margin-top:8px">
 <button class="btn btn-success" onclick="guardar()" style="width:95%">💾 Guardar Configuración</button>
-<button class="btn btn-danger" onclick="resetear()" style="width:95%; margin-top:6px">🔄 Resetear todo</button>
+<button class="btn btn-danger" onclick="resetear()" style="width:95%; margin-top:4px">🔄 Resetear todo</button>
 </div>
 <hr>
 <div id="resumen" style="font-size:11px; background:#3d3d3d; padding:8px; border-radius:6px;"></div>
@@ -159,16 +174,93 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
+// FUNCIÓN PARA CARGAR CONFIGURACIÓN DESDE JSON
+// ============================================================
+function cargarConfiguracion(event) {{
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {{
+        try {{
+            const config = JSON.parse(e.target.result);
+            document.getElementById('fileStatus').innerHTML = '✅ Cargado: ' + file.name;
+            aplicarConfiguracion(config);
+        }} catch (error) {{
+            alert('❌ Error al leer el archivo JSON: ' + error.message);
+        }}
+    }};
+    reader.readAsText(file);
+    // Resetear el input para poder cargar el mismo archivo nuevamente
+    event.target.value = '';
+}}
+
+function aplicarConfiguracion(config) {{
+    // Resetear estado actual
+    entradaId = null;
+    for(const n of nodos) {{
+        n.es_entrada = false;
+        n.tipo_aparato = "";
+        n.valvula_tipo = "";
+        n.valvula_cerrada = false;
+        n.valvula_apertura = 100;
+    }}
+    
+    // Aplicar nodo de entrada
+    const nodoEntrada = config.nodo_entrada;
+    if (nodoEntrada !== undefined && nodoEntrada !== null) {{
+        const entrada = nodos.find(n => n.id === nodoEntrada);
+        if(entrada) {{
+            entrada.es_entrada = true;
+            entradaId = nodoEntrada;
+        }}
+    }}
+    
+    // Aplicar configuración de nodos
+    for(const nodoConfig of config.nodos) {{
+        const nodo = nodos.find(n => n.id === nodoConfig.id);
+        if(nodo) {{
+            if(nodoConfig.tipo_aparato) nodo.tipo_aparato = nodoConfig.tipo_aparato;
+            if(nodoConfig.valvula_tipo) {{
+                nodo.valvula_tipo = nodoConfig.valvula_tipo;
+                nodo.valvula_cerrada = nodoConfig.valvula_cerrada || false;
+                nodo.valvula_apertura = nodoConfig.valvula_apertura !== undefined ? nodoConfig.valvula_apertura : 100;
+            }}
+            if(nodoConfig.es_entrada) {{
+                nodo.es_entrada = true;
+                entradaId = nodoConfig.id;
+            }}
+        }}
+    }}
+    
+    // Actualizar todo
+    actualizarGrafico();
+    actualizarResumen();
+    if(nodoSeleccionado) {{
+        // Buscar el nodo seleccionado actualizado
+        const nodoActualizado = nodos.find(n => n.id === nodoSeleccionado.id);
+        if(nodoActualizado) mostrarPanel(nodoActualizado);
+    }}
+    
+    console.log("✅ Configuración aplicada exitosamente");
+    // Notificar a Streamlit que la configuración ha cambiado
+    if (window.parent) {{
+        window.parent.postMessage({{
+            type: 'configuracion_aplicada',
+            config: config
+        }}, '*');
+    }}
+}}
+
+// ============================================================
 // ACTUALIZAR GRÁFICO 3D
 // ============================================================
 function actualizarGrafico() {{
-    // Verificar que hay datos
     if (nodos.length === 0) {{
         document.getElementById('main').innerHTML = '<p style="color:red;text-align:center;margin-top:50px;">⚠️ No hay nodos para mostrar</p>';
         return;
     }}
     
-    // Preparar datos para las tuberías
     const tx=[], ty=[], tz=[];
     for(const t of tuberias) {{
         tx.push(t.x1, t.x2, null);
@@ -176,7 +268,6 @@ function actualizarGrafico() {{
         tz.push(t.z1, t.z2, null);
     }}
     
-    // Preparar datos para los nodos
     const nx=[], ny=[], nz=[], col=[], tam=[], labels=[], customdata=[];
     for(const n of nodos) {{
         nx.push(n.x);
@@ -200,7 +291,6 @@ function actualizarGrafico() {{
         }}
     }}
     
-    // Calcular rangos para el aspect ratio
     var xs = nodos.map(n => n.x);
     var ys = nodos.map(n => n.y);
     var zs = nodos.map(n => n.z);
@@ -253,24 +343,19 @@ function actualizarGrafico() {{
     
     Plotly.newPlot('main', traces, layout);
     
-    // Evento click
     document.getElementById('main').on('plotly_click', function(data) {{
         if(data.points && data.points[0]) {{
             const nodoId = data.points[0].customdata;
-            console.log("Click en nodo ID:", nodoId);
-            
             const nodo = nodos.find(n => n.id === nodoId);
             if(nodo) {{
                 mostrarPanel(nodo);
-            }} else {{
-                console.warn("Nodo no encontrado para ID:", nodoId);
             }}
         }}
     }});
 }}
 
 // ============================================================
-// FUNCIONES DEL PANEL - CON APERTURA DE VÁLVULA
+// FUNCIONES DEL PANEL
 // ============================================================
 function mostrarPanel(nodo) {{
     if (!nodo) return;
@@ -312,9 +397,8 @@ function mostrarPanel(nodo) {{
         <option value="Esfera" ${{nodo.valvula_tipo === 'Esfera' ? 'selected' : ''}}>Esfera (Leq=0.2m)</option>
     </select>
     
-    <!-- Slider de apertura -->
     <div style="margin-top:8px;">
-        <label style="font-size:10px; color:#aaaaaa;">🔓 Apertura de válvula: <span id="aperturaDisplay">${{apertura}}</span>%</label>
+        <label style="font-size:10px; color:#aaaaaa;">🔓 Apertura: <span id="aperturaDisplay">${{apertura}}</span>%</label>
         <input type="range" id="selApertura" min="0" max="100" value="${{apertura}}" step="5" 
                style="width:100%; margin:3px 0;" 
                oninput="document.getElementById('aperturaDisplay').innerText = this.value">
@@ -333,10 +417,36 @@ function mostrarPanel(nodo) {{
     }}
     html += `</div>`;
     document.getElementById('info-panel').innerHTML = html;
+    
+    // Notificar a Streamlit que hubo un cambio en la configuración
+    notificarCambio();
 }}
 
 // ============================================================
-// FUNCIONES DE CONFIGURACIÓN - CON APERTURA DE VÁLVULA
+// FUNCIÓN PARA NOTIFICAR CAMBIOS A STREAMLIT
+// ============================================================
+function notificarCambio() {{
+    const config = {{
+        nodo_entrada: entradaId,
+        nodos: nodos.map(n => ({{
+            id: n.id,
+            es_entrada: n.id === entradaId,
+            tipo_aparato: n.tipo_aparato,
+            valvula_tipo: n.valvula_tipo,
+            valvula_cerrada: n.valvula_cerrada || false,
+            valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
+        }}))
+    }};
+    if (window.parent) {{
+        window.parent.postMessage({{
+            type: 'configuracion_cambiada',
+            config: config
+        }}, '*');
+    }}
+}}
+
+// ============================================================
+// FUNCIONES DE CONFIGURACIÓN
 // ============================================================
 function setEntrada(id) {{
     if(entradaId !== null && entradaId !== undefined) {{
@@ -354,6 +464,7 @@ function setEntrada(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
+    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -371,6 +482,7 @@ function setAparato(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
+    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -392,6 +504,7 @@ function setValvula(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
+    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -407,6 +520,7 @@ function limpiarNodo(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
+    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -422,6 +536,7 @@ function resetear() {{
         }}
         actualizarGrafico();
         actualizarResumen();
+        notificarCambio();
         document.getElementById('info-panel').innerHTML = '<p style="font-size:11px; color:#aaaaaa">Seleccione un nodo</p>';
     }}
 }}
@@ -672,6 +787,32 @@ def generar_perfil_presiones(red):
     except Exception as e:
         return None
 
+# ================================================================================
+# FUNCIÓN PARA SINCRONIZAR TABLA CON CONFIGURACIÓN CARGADA
+# ================================================================================
+
+def actualizar_tabla_desde_config(red, config_data):
+    """
+    Actualiza la tabla manual con la configuración cargada desde un JSON.
+    Retorna los datos para el DataEditor.
+    """
+    nodos_ids = list(red.nodos.keys())
+    default_entrada_idx = 0
+    aparatos_list = [""] * len(nodos_ids)
+    valvulas_list = [""] * len(nodos_ids)
+    aperturas_list = [100.0] * len(nodos_ids)
+
+    if config_data:
+        if config_data.get("nodo_entrada") in nodos_ids:
+            default_entrada_idx = nodos_ids.index(config_data["nodo_entrada"])
+        config_nodos = {n["id"]: n for n in config_data.get("nodos", [])}
+        for i, nid in enumerate(nodos_ids):
+            if nid in config_nodos:
+                aparatos_list[i] = config_nodos[nid].get("tipo_aparato", "")
+                valvulas_list[i] = config_nodos[nid].get("valvula_tipo", "")
+                aperturas_list[i] = config_nodos[nid].get("valvula_apertura", 100.0)
+    
+    return nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list
 # ================================================================================
 # ENCABEZADO Y BOTONES DE APOYO (TOP RIGHT)
 # ================================================================================
