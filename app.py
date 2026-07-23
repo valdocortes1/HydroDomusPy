@@ -1139,20 +1139,27 @@ if st.session_state.red is not None:
         st.components.v1.html(html_content, height=650, scrolling=True)
         
         st.info("💡 Después de configurar en 3D, la tabla manual se actualizará automáticamente.")
-    
+   
     # ==========================================
     # OPCIÓN 2: TABLA MANUAL (alternativa)
     # ==========================================
     with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
         st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
         
+        col_load, col_save = st.columns([1, 1])
+        
+        with col_load:
+            config_file = st.file_uploader(
+                "📂 Cargar configuración (.json)", 
+                type=["json"],
+                key="config_uploader"
+            )
+        
         # Verificar si hay una configuración recién sincronizada
         if 'config_3d' in st.session_state and st.session_state.config_3d:
             config_3d = st.session_state.config_3d
             # Usar la configuración de la interfaz 3D
             nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, config_3d)
-            # Limpiar para evitar recargas infinitas
-            # st.session_state.config_3d = None  # No limpiar aquí para que la tabla lo use
         else:
             # Usar el estado actual de la red
             nodos_ids = list(red.nodos.keys())
@@ -1169,7 +1176,6 @@ if st.session_state.red is not None:
                 if nodo.es_entrada:
                     default_entrada_idx = i
     
-
         col1, col2 = st.columns([1, 2.5])
         with col1:
             nodo_entrada = st.selectbox(
@@ -1209,7 +1215,7 @@ if st.session_state.red is not None:
                 hide_index=True,
                 key="nodos_editor"
             )
-
+    
         config_to_save = {
             "nodo_entrada": nodo_entrada, 
             "nodos": []
