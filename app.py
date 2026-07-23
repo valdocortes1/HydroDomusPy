@@ -227,6 +227,8 @@ if 'tema' not in st.session_state:
     tema_sistema = st.get_option("theme.base")
     st.session_state.tema = tema_sistema if tema_sistema else "dark"
 
+
+
 # ================================================================================
 # APLICAR ESTILOS (DESPUÉS DE INICIALIZAR EL TEMA)
 # ================================================================================
@@ -268,6 +270,9 @@ with col_selector:
     # Si el usuario cambia el tema, actualizamos el estado y recargamos
     if nuevo_tema != st.session_state.tema:
         st.session_state.tema = nuevo_tema
+        # Limpiar caché de estilos
+        if 'style_applied' in st.session_state:
+            del st.session_state.style_applied
         st.rerun()
 
 # ================================================================================
