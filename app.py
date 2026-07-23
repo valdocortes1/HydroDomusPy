@@ -1613,92 +1613,16 @@ def main():
         st.session_state.dxf_layers = []
     if 'selected_layers' not in st.session_state:
         st.session_state.selected_layers = []
+    if 'vel_min' not in st.session_state:
+        st.session_state.vel_min = 0.5
+    if 'vel_max' not in st.session_state:
+        st.session_state.vel_max = 2.0
 
     # ============================================================
     # SIDEBAR - CONTROLES
     # ============================================================
     with st.sidebar:
-        st.title("💧 Hydro Domus Py")
-        st.caption("Análisis Hidráulico para Redes Internas")
-        st.caption("v2.1.0 - Web")
-        st.divider()
-        
-        # ===== CARGA DE DXF =====
-        st.subheader("📁 Cargar DXF")
-        
-        dxf_file = st.file_uploader(
-            "Seleccionar archivo DXF",
-            type=['dxf'],
-            help="Cargue el plano hidrosanitario en formato DXF"
-        )
-        
-        if dxf_file is not None:
-            # Guardar temporalmente
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
-                tmp.write(dxf_file.getvalue())
-                tmp_path = tmp.name
-            
-            try:
-                reader = DXFReader(tmp_path)
-                layers = reader.obtener_layers()
-                st.session_state.dxf_layers = layers
-                st.session_state.dxf_loaded = True
-                st.session_state._dxf_reader = reader
-                st.session_state._dxf_path = tmp_path
-                
-                st.success(f"✅ {len(layers)} layers encontrados")
-                
-                # Selección de layers
-                selected = st.multiselect(
-                    "Seleccionar layers con tuberías:",
-                    options=layers,
-                    default=layers[:3] if len(layers) >= 3 else layers
-                )
-                
-                if selected:
-                    st.session_state.selected_layers = selected
-                    if st.button("🚀 Construir Red", type="primary", use_container_width=True):
-                        with st.spinner("Construyendo red a partir del DXF..."):
-                            lineas_raw = reader.extraer_lineas(selected)
-                            if lineas_raw:
-                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=1000)
-                                nodos_dict, tuberias = construir_red(lineas)
-                                
-                                red = RedHidraulica()
-                                for (x, y, z), nid in nodos_dict.items():
-                                    red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
-                                for t in tuberias:
-                                    red.agregar_tuberia(t)
-                                
-                                st.session_state.red = red
-                                st.session_state.dxf_loaded = True
-                                
-                                # Configuración automática: primer nodo como entrada
-                                if len(red.nodos) > 0:
-                                    primer_nodo = list(red.nodos.keys())[0]
-                                    red.nodo_entrada_id = primer_nodo
-                                    red.nodos[primer_nodo].es_entrada = True
-                                    ajustar_cotas_relativas(red)
-                                
-                                st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
-                                st.rerun()
-                            else:
-                                st.error("No se encontraron líneas en los layers seleccionados")
-                else:
-                    st.warning("Seleccione al menos un layer")
-                    
-            except Exception as e:
-                st.error(f"Error leyendo DXF: {e}")
-                st.session_state.dxf_loaded = False
-            
-            # Limpiar archivo temporal
-            if os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
-        
-        st.divider()
+        # ... (código de la sidebar)
         
         # ===== PARÁMETROS =====
         st.subheader("⚙️ Parámetros")
@@ -1708,98 +1632,38 @@ def main():
             value=st.session_state.presion_entrada,
             min_value=1.0,
             max_value=50.0,
-            step=0.5,
-            help="Presión en el nodo de entrada (valor típico: 15-30 mca)"
+            step=0.5
         )
         st.session_state.presion_entrada = presion_entrada
         
         col1, col2 = st.columns(2)
         with col1:
-            vel_min = st.number_input("Vel. mínima (m/s)", value=VEL_MIN_MS, min_value=0.1, max_value=5.0, step=0.1)
+            vel_min = st.number_input(
+                "Vel. mínima (m/s)", 
+                value=st.session_state.vel_min, 
+                min_value=0.1, 
+                max_value=5.0, 
+                step=0.1
+            )
+            st.session_state.vel_min = vel_min
         with col2:
-            vel_max = st.number_input("Vel. máxima (m/s)", value=VEL_MAX_MS, min_value=0.5, max_value=10.0, step=0.1)
-        
-        tipo_ocupacion = st.selectbox(
-            "🏢 Tipo de edificación:",
-            options=list(TIPOS_OCUPACION_AGUA.keys()),
-            index=list(TIPOS_OCUPACION_AGUA.keys()).index(st.session_state.tipo_ocupacion) 
-                 if st.session_state.tipo_ocupacion in TIPOS_OCUPACION_AGUA else 0
-        )
-        st.session_state.tipo_ocupacion = tipo_ocupacion
-        
-        # Mostrar info de ocupación
-        info_ocupacion = TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {})
-        st.caption(f"📌 {info_ocupacion.get('descripcion', '')}")
-        st.caption(f"📐 {info_ocupacion.get('formula', '')}")
-        
-        restringir_diam = st.checkbox("Restringir diámetro máximo")
-        if restringir_diam:
-            diam_max = st.selectbox(
-                "Diámetro máximo:",
-                options=list(DIAMETROS_PAVCO.keys())
+            vel_max = st.number_input(
+                "Vel. máxima (m/s)", 
+                value=st.session_state.vel_max, 
+                min_value=0.5, 
+                max_value=10.0, 
+                step=0.1
             )
-            st.session_state.diametro_maximo = DIAMETROS_PAVCO[diam_max]
-        else:
-            st.session_state.diametro_maximo = None
+            st.session_state.vel_max = vel_max
         
-        st.divider()
+        # ... (resto del código)
         
-        # ===== CONFIGURACIÓN DE NODOS =====
-        if st.session_state.red is not None:
-            st.subheader("🔧 Configurar Nodos")
-            
-            if st.button("🎯 Configuración Interactiva 3D", use_container_width=True):
-                nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
-                               "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
-                               "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
-                              for n in st.session_state.red.nodos.values()]
-                
-                tuberias_data = []
-                for t in st.session_state.red.tuberias.values():
-                    n1, n2 = st.session_state.red.nodos[t.nodo_inicio], st.session_state.red.nodos[t.nodo_fin]
-                    tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
-                                          "x2": n2.x, "y2": n2.y, "z2": n2.z})
-                
-                html_content = generar_html_config(nodos_data, tuberias_data)
-                
-                with st.expander("Configuración Interactiva 3D", expanded=True):
-                    st.components.v1.html(html_content, height=650, scrolling=True)
-                    st.info("💡 Configure los nodos en el gráfico 3D y descargue el archivo JSON")
-            
-            # Asignación manual de entrada
-            st.subheader("📌 Asignación Manual")
-            
-            # Seleccionar nodo de entrada
-            nodo_ids = list(st.session_state.red.nodos.keys())
-            entrada_actual = st.session_state.red.nodo_entrada_id
-            nodo_entrada = st.selectbox(
-                "Nodo de entrada:",
-                options=nodo_ids,
-                index=nodo_ids.index(entrada_actual) if entrada_actual in nodo_ids else 0,
-                format_func=lambda x: f"Nodo {x}"
-            )
-            
-            if nodo_entrada != entrada_actual:
-                if st.button("Establecer como Entrada"):
-                    for n in st.session_state.red.nodos.values():
-                        n.es_entrada = False
-                    st.session_state.red.nodo_entrada_id = nodo_entrada
-                    st.session_state.red.nodos[nodo_entrada].es_entrada = True
-                    ajustar_cotas_relativas(st.session_state.red)
-                    st.success(f"✅ Nodo {nodo_entrada} establecido como entrada")
-                    st.rerun()
-        
-        st.divider()
-
-        global VEL_MIN_MS, VEL_MAX_MS
         # ===== EJECUTAR ANÁLISIS =====
         if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
             if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True):
                 with st.spinner("Ejecutando análisis hidráulico..."):
-                    # Actualizar variables globales
-                    
-                    VEL_MIN_MS = vel_min
-                    VEL_MAX_MS = vel_max
+                    # ❌ ELIMINAR: global VEL_MIN_MS, VEL_MAX_MS
+                    # ✅ Los valores ya están en session_state
                     
                     # Ejecutar análisis
                     analyzer = HydraulicAnalyzer(
