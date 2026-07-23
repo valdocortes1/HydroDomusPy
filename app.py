@@ -226,21 +226,21 @@ let currentCamera = null;
 // ============================================================
 // FUNCIÓN PARA SINCRONIZAR DIRECTAMENTE CON LA TABLA MANUAL
 // ============================================================
-function sincronizarTablaDirecta() {
+function sincronizarTablaDirecta() {{
     const btn = document.getElementById('syncBtn');
     const status = document.getElementById('syncStatus');
     
     // Crear objeto de configuración actual
-    const config = {
+    const config = {{
         nodo_entrada: entradaId,
-        nodos: nodos.map(n => ({
+        nodos: nodos.map(n => ({{
             id: n.id,
             es_entrada: n.id === entradaId,
             tipo_aparato: n.tipo_aparato,
             valvula_tipo: n.valvula_tipo,
             valvula_cerrada: n.valvula_cerrada || false,
             valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
-        }))
+        }}))
     };
     
     // Guardar en localStorage para que Streamlit lo pueda leer
