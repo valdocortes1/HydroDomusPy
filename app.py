@@ -93,7 +93,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos con carga de configuración"""
+    """Genera HTML para la configuración interactiva de nodos con sincronización y carga de configuración"""
     
     # Verificar que los datos no estén vacíos
     if not nodos_data or not tuberias_data:
@@ -174,6 +174,37 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
+// FUNCIÓN PARA NOTIFICAR CAMBIOS A STREAMLIT
+// ============================================================
+function notificarCambio() {{
+    // Crear objeto de configuración actual
+    const config = {{
+        nodo_entrada: entradaId,
+        nodos: nodos.map(n => ({{
+            id: n.id,
+            es_entrada: n.id === entradaId,
+            tipo_aparato: n.tipo_aparato,
+            valvula_tipo: n.valvula_tipo,
+            valvula_cerrada: n.valvula_cerrada || false,
+            valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
+        }}))
+    }};
+    
+    // Enviar mensaje a Streamlit
+    if (window.parent) {{
+        window.parent.postMessage({{
+            type: 'configuracion_cambiada',
+            config: config
+        }}, '*');
+    }}
+    
+    // Guardar en localStorage para persistencia local
+    try {{
+        localStorage.setItem('hydro_config_3d', JSON.stringify(config));
+    }} catch(e) {{}}
+}}
+
+// ============================================================
 // FUNCIÓN PARA CARGAR CONFIGURACIÓN DESDE JSON
 // ============================================================
 function cargarConfiguracion(event) {{
@@ -233,23 +264,18 @@ function aplicarConfiguracion(config) {{
         }}
     }}
     
+    // Notificar cambio a Streamlit
+    notificarCambio();
+    
     // Actualizar todo
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado) {{
-        // Buscar el nodo seleccionado actualizado
         const nodoActualizado = nodos.find(n => n.id === nodoSeleccionado.id);
         if(nodoActualizado) mostrarPanel(nodoActualizado);
     }}
     
     console.log("✅ Configuración aplicada exitosamente");
-    // Notificar a Streamlit que la configuración ha cambiado
-    if (window.parent) {{
-        window.parent.postMessage({{
-            type: 'configuracion_aplicada',
-            config: config
-        }}, '*');
-    }}
 }}
 
 // ============================================================
@@ -418,31 +444,8 @@ function mostrarPanel(nodo) {{
     html += `</div>`;
     document.getElementById('info-panel').innerHTML = html;
     
-    // Notificar a Streamlit que hubo un cambio en la configuración
+    // Notificar cambio a Streamlit
     notificarCambio();
-}}
-
-// ============================================================
-// FUNCIÓN PARA NOTIFICAR CAMBIOS A STREAMLIT
-// ============================================================
-function notificarCambio() {{
-    const config = {{
-        nodo_entrada: entradaId,
-        nodos: nodos.map(n => ({{
-            id: n.id,
-            es_entrada: n.id === entradaId,
-            tipo_aparato: n.tipo_aparato,
-            valvula_tipo: n.valvula_tipo,
-            valvula_cerrada: n.valvula_cerrada || false,
-            valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
-        }}))
-    }};
-    if (window.parent) {{
-        window.parent.postMessage({{
-            type: 'configuracion_cambiada',
-            config: config
-        }}, '*');
-    }}
 }}
 
 // ============================================================
@@ -584,6 +587,19 @@ function guardar() {{
 // ============================================================
 // INICIALIZAR
 // ============================================================
+// Cargar configuración guardada en localStorage si existe
+try {{
+    const savedConfig = localStorage.getItem('hydro_config_3d');
+    if (savedConfig) {{
+        const config = JSON.parse(savedConfig);
+        // Solo aplicar si hay una configuración válida
+        if (config && config.nodo_entrada !== undefined && config.nodos) {{
+            console.log("🔄 Cargando configuración guardada localmente...");
+            aplicarConfiguracion(config);
+        }}
+    }}
+}} catch(e) {{}}
+
 actualizarGrafico();
 actualizarResumen();
 </script></body></html>"""
@@ -813,6 +829,40 @@ def actualizar_tabla_desde_config(red, config_data):
                 aperturas_list[i] = config_nodos[nid].get("valvula_apertura", 100.0)
     
     return nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list
+
+# ================================================================================
+# FUNCIÓN PARA RECIBIR MENSAJES DEL COMPONENTE HTML
+# ================================================================================
+
+def procesar_mensaje_configuracion():
+    """
+    Procesa los mensajes enviados desde el componente HTML (interfaz 3D).
+    Actualiza la red y el estado de sesión con la configuración recibida.
+    """
+    # Verificar si hay un mensaje del componente
+    query_params = st.query_params
+    
+    # También podemos usar st.session_state para almacenar la configuración
+    if 'config_3d' in st.session_state:
+        config = st.session_state.config_3d
+        if config and st.session_state.red:
+            # Actualizar los nodos con la configuración recibida
+            for nodo_cfg in config.get("nodos", []):
+                nid = nodo_cfg.get("id")
+                if nid in st.session_state.red.nodos:
+                    nodo = st.session_state.red.nodos[nid]
+                    nodo.es_entrada = nodo_cfg.get("es_entrada", False)
+                    nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
+                    nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
+                    nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
+                    nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
+            
+            # Configurar nodo de entrada
+            if config.get("nodo_entrada") is not None:
+                st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
+            
+            # Marcar que la configuración ha sido actualizada
+            st.session_state.config_actualizada = True
 # ================================================================================
 # ENCABEZADO Y BOTONES DE APOYO (TOP RIGHT)
 # ================================================================================
@@ -961,121 +1011,167 @@ if st.session_state.red is not None:
     # ==========================================
     # CONFIGURACIÓN 3D INTERACTIVA
     # ==========================================
-    with st.expander("🎯 Configuración 3D Interactiva (Recomendado)", expanded=True):
-        st.markdown("""
-        **💡 Haga clic en cualquier nodo del gráfico 3D para configurarlo.**
-        - 🚰 Asigne el nodo de entrada
-        - 🚽 Asigne aparatos sanitarios
-        - 🔧 Configure válvulas y su apertura
-        """)
-        
-        # Preparar datos para el HTML interactivo
-        nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
-                       "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
-                       "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
-                      for n in red.nodos.values()]
-        
-        tuberias_data = []
-        for t in red.tuberias.values():
-            n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
-            tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
-                                  "x2": n2.x, "y2": n2.y, "z2": n2.z})
-        
-        # Generar y mostrar HTML interactivo con tema adaptativo
-        html_content = generar_html_config(nodos_data, tuberias_data)
-        st.components.v1.html(html_content, height=650, scrolling=True)
-        
-        st.info("💡 Después de configurar, descargue el archivo JSON y cárguelo en la sección 'Cargar configuración' abajo.")
-    
     # ==========================================
-    # OPCIÓN 2: TABLA MANUAL (alternativa)
+		# OPCIÓN 1: CONFIGURACIÓN 3D INTERACTIVA
+		# ==========================================
+		with st.expander("🎯 Configuración 3D Interactiva (Recomendado)", expanded=True):
+		    st.markdown("""
+		    **💡 Haga clic en cualquier nodo del gráfico 3D para configurarlo.**
+		    - 🚰 Asigne el nodo de entrada
+		    - 🚽 Asigne aparatos sanitarios
+		    - 🔧 Configure válvulas y su apertura
+		    """)
+		    
+		    # Preparar datos para el HTML interactivo
+		    nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
+		                   "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
+		                   "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada,
+		                   "valvula_apertura": getattr(n, 'valvula_apertura', 100)} 
+		                  for n in red.nodos.values()]
+		    
+		    tuberias_data = []
+		    for t in red.tuberias.values():
+		        n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
+		        tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
+		                              "x2": n2.x, "y2": n2.y, "z2": n2.z})
+		    
+		    # Generar HTML interactivo
+		    html_content = generar_html_config(nodos_data, tuberias_data)
+		    
+		    # Usar components con comunicación
+		    st.components.v1.html(html_content, height=650, scrolling=True)
+		    
+		    # Escuchar mensajes del componente (usando st.query_params)
+		    # Verificar si hay una configuración almacenada en session_state
+		    if 'config_3d' in st.session_state and st.session_state.config_3d:
+		        # Actualizar la tabla manual con la configuración recibida
+		        config_3d = st.session_state.config_3d
+		        nodos_ids = list(red.nodos.keys())
+		        
+		        # Actualizar los nodos en la red
+		        for nodo_cfg in config_3d.get("nodos", []):
+		            nid = nodo_cfg.get("id")
+		            if nid in red.nodos:
+		                red.nodos[nid].es_entrada = nodo_cfg.get("es_entrada", False)
+		                red.nodos[nid].tipo_aparato = nodo_cfg.get("tipo_aparato", "")
+		                red.nodos[nid].valvula_tipo = nodo_cfg.get("valvula_tipo", "")
+		                red.nodos[nid].valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
+		                red.nodos[nid].valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
+		        
+		        if config_3d.get("nodo_entrada") is not None:
+		            red.nodo_entrada_id = config_3d["nodo_entrada"]
+		        
+		        # Limpiar para evitar procesamiento repetido
+		        st.session_state.config_3d = None
+		        st.session_state.config_actualizada = True
+		        st.rerun()
+		    
+		    st.info("💡 Después de configurar en 3D, la tabla manual se actualizará automáticamente.")
+   
     # ==========================================
-    with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
-        st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
-        
-        col_load, col_save = st.columns([1, 1])
-        
-        with col_load:
-            config_file = st.file_uploader(
-                "📂 Cargar configuración (.json)", 
-                type=["json"],
-                key="config_uploader"
-            )
-        
-        # ==========================================
-        # 🔧 CARGAR CONFIGURACIÓN USANDO LA NUEVA FUNCIÓN
-        # ==========================================
-        loaded_config = None
-        if config_file is not None:
-            try:
-                loaded_config = json.load(config_file)
-                st.success("✅ Configuración cargada exitosamente")
-            except Exception as e:
-                st.error(f"Error cargando configuración: {e}")
-        
-        # Preparar datos para la tabla usando la función auxiliar
-        nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, loaded_config)
-
-        col1, col2 = st.columns([1, 2.5])
-        with col1:
-            nodo_entrada = st.selectbox(
-                "🚰 ID Nodo Entrada:", 
-                options=nodos_ids, 
-                index=default_entrada_idx,
-                key="nodo_entrada_main"
-            )
-            
-        with col2:
-            df_config = pd.DataFrame({
-                "ID Nodo": nodos_ids, 
-                "Aparato": aparatos_list, 
-                "Válvula": valvulas_list, 
-                "Apertura (%)": aperturas_list
-            })
-            edited_df = st.data_editor(
-                df_config,
-                column_config={
-                    "Aparato": st.column_config.SelectboxColumn(
-                        "Aparato", 
-                        options=[""] + list(UNIDADES_GASTO.keys())
-                    ),
-                    "Válvula": st.column_config.SelectboxColumn(
-                        "Válvula", 
-                        options=["", "Compuerta", "Globo", "Check", "Esfera"]
-                    ),
-                    "Apertura (%)": st.column_config.NumberColumn(
-                        "Apertura (%)", 
-                        min_value=0.0, 
-                        max_value=100.0, 
-                        step=5.0
-                    )
-                },
-                disabled=["ID Nodo"], 
-                use_container_width=True, 
-                hide_index=True,
-                key="nodos_editor"
-            )
-
-        config_to_save = {
-            "nodo_entrada": nodo_entrada, 
-            "nodos": []
-        }
-        for _, row in edited_df.iterrows():
-            config_to_save["nodos"].append({
-                "id": row["ID Nodo"], 
-                "tipo_aparato": row["Aparato"], 
-                "valvula_tipo": row["Válvula"], 
-                "valvula_apertura": row["Apertura (%)"]
-            })
-        
-        with col_save:
-            st.write("<br>", unsafe_allow_html=True)
-            st.download_button(
-                "💾 Guardar Progreso (.json)", 
-                data=json.dumps(config_to_save, indent=2, ensure_ascii=False), 
-                file_name="Config.json",
-                key="download_config"
-            )
+		# OPCIÓN 2: TABLA MANUAL (alternativa)
+		# ==========================================
+		with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
+		    st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
+		    
+		    col_load, col_save = st.columns([1, 1])
+		    
+		    with col_load:
+		        config_file = st.file_uploader(
+		            "📂 Cargar configuración (.json)", 
+		            type=["json"],
+		            key="config_uploader"
+		        )
+		    
+		    # ==========================================
+		    # 🔧 OBTENER DATOS DE LA RED ACTUAL
+		    # ==========================================
+		    nodos_ids = list(red.nodos.keys())
+		    default_entrada_idx = 0
+		    aparatos_list = [""] * len(nodos_ids)
+		    valvulas_list = [""] * len(nodos_ids)
+		    aperturas_list = [100.0] * len(nodos_ids)
+		    
+		    # Si hay una configuración cargada desde archivo, usarla
+		    loaded_config = None
+		    if config_file is not None:
+		        try:
+		            loaded_config = json.load(config_file)
+		            st.success("✅ Configuración cargada exitosamente")
+		            # Usar la función auxiliar para cargar los datos
+		            nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, loaded_config)
+		        except Exception as e:
+		            st.error(f"Error cargando configuración: {e}")
+		    else:
+		        # Si no hay archivo cargado, usar el estado actual de la red
+		        for i, nid in enumerate(nodos_ids):
+		            nodo = red.nodos[nid]
+		            aparatos_list[i] = nodo.tipo_aparato or ""
+		            valvulas_list[i] = nodo.valvula_tipo or ""
+		            aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
+		            if nodo.es_entrada:
+		                default_entrada_idx = i
+		
+		    col1, col2 = st.columns([1, 2.5])
+		    with col1:
+		        nodo_entrada = st.selectbox(
+		            "🚰 ID Nodo Entrada:", 
+		            options=nodos_ids, 
+		            index=default_entrada_idx,
+		            key="nodo_entrada_main"
+		        )
+		        
+		    with col2:
+		        df_config = pd.DataFrame({
+		            "ID Nodo": nodos_ids, 
+		            "Aparato": aparatos_list, 
+		            "Válvula": valvulas_list, 
+		            "Apertura (%)": aperturas_list
+		        })
+		        edited_df = st.data_editor(
+		            df_config,
+		            column_config={
+		                "Aparato": st.column_config.SelectboxColumn(
+		                    "Aparato", 
+		                    options=[""] + list(UNIDADES_GASTO.keys())
+		                ),
+		                "Válvula": st.column_config.SelectboxColumn(
+		                    "Válvula", 
+		                    options=["", "Compuerta", "Globo", "Check", "Esfera"]
+		                ),
+		                "Apertura (%)": st.column_config.NumberColumn(
+		                    "Apertura (%)", 
+		                    min_value=0.0, 
+		                    max_value=100.0, 
+		                    step=5.0
+		                )
+		            },
+		            disabled=["ID Nodo"], 
+		            use_container_width=True, 
+		            hide_index=True,
+		            key="nodos_editor"
+		        )
+		
+		    config_to_save = {
+		        "nodo_entrada": nodo_entrada, 
+		        "nodos": []
+		    }
+		    for _, row in edited_df.iterrows():
+		        config_to_save["nodos"].append({
+		            "id": row["ID Nodo"], 
+		            "tipo_aparato": row["Aparato"], 
+		            "valvula_tipo": row["Válvula"], 
+		            "valvula_apertura": row["Apertura (%)"]
+		        })
+		    
+		    with col_save:
+		        st.write("<br>", unsafe_allow_html=True)
+		        st.download_button(
+		            "💾 Guardar Progreso (.json)", 
+		            data=json.dumps(config_to_save, indent=2, ensure_ascii=False), 
+		            file_name="Config.json",
+		            key="download_config"
+		        )
 
     # ===== PASO 3: SIMULACIÓN Y RESULTADOS =====
     st.markdown("---")
