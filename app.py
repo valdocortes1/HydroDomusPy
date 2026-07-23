@@ -6,6 +6,7 @@
 #                          Interfaz Web con Streamlit
 # ================================================================================
 #                               Versión 1.0.0 - Web
+#                          (Interfaz de Pantalla Completa)
 # ================================================================================
 
 import streamlit as st
@@ -34,8 +35,282 @@ st.set_page_config(
     page_title="Hydro Domus Py - Análisis Hidráulico",
     page_icon="💧",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
+
+# ================================================================================
+# ESTILOS CSS PERSONALIZADOS
+# ================================================================================
+def apply_custom_styles():
+    """Aplica estilos CSS personalizados para una interfaz profesional"""
+    st.markdown("""
+    <style>
+        /* Ocultar sidebar */
+        .stSidebar {
+            display: none !important;
+        }
+        
+        /* Header superior */
+        .main-header {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            padding: 1.2rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .main-header .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .main-header .logo-icon {
+            font-size: 2.8rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.3rem 1rem;
+            border-radius: 12px;
+        }
+        
+        .main-header .title {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        
+        .main-header .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        
+        .main-header .status-section {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: rgba(255,255,255,0.08);
+            padding: 0.5rem 1.5rem;
+            border-radius: 10px;
+        }
+        
+        .main-header .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+        
+        .main-header .status-badge .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .dot-green { background: #2ecc71; }
+        .dot-yellow { background: #f1c40f; }
+        .dot-red { background: #e74c3c; }
+        .dot-gray { background: #7f8c8d; }
+        
+        /* Barra de herramientas */
+        .toolbar {
+            background: #1e2a3a;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .toolbar .tool-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .toolbar .divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255,255,255,0.15);
+            margin: 0 0.5rem;
+        }
+        
+        /* Botones de acción */
+        .action-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        
+        .action-btn:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+        
+        .action-btn.primary {
+            background: #3498db;
+            border-color: #3498db;
+        }
+        
+        .action-btn.primary:hover {
+            background: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .action-btn.success {
+            background: #27ae60;
+            border-color: #27ae60;
+        }
+        
+        .action-btn.success:hover {
+            background: #229954;
+            border-color: #229954;
+        }
+        
+        .action-btn.warning {
+            background: #f39c12;
+            border-color: #f39c12;
+        }
+        
+        .action-btn.warning:hover {
+            background: #d68910;
+            border-color: #d68910;
+        }
+        
+        .action-btn.danger {
+            background: #e74c3c;
+            border-color: #e74c3c;
+        }
+        
+        .action-btn.danger:hover {
+            background: #c0392b;
+            border-color: #c0392b;
+        }
+        
+        /* Tarjetas de métricas */
+        .metric-card {
+            background: #1e2a3a;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            border-color: rgba(52,152,219,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .metric-card .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #3498db;
+        }
+        
+        .metric-card .metric-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 0.2rem;
+        }
+        
+        /* Secciones de configuración */
+        .config-section {
+            background: #1a2533;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .config-section .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3498db;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Personalizar pestañas */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0.5rem;
+            background: #1a2533;
+            padding: 0.5rem;
+            border-radius: 10px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: #3498db;
+            color: white;
+        }
+        
+        /* File uploader */
+        .upload-area {
+            border: 2px dashed rgba(52,152,219,0.3);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #3498db;
+            background: rgba(52,152,219,0.05);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            .main-header .logo-section {
+                flex-direction: column;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .toolbar .divider {
+                display: none;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ================================================================================
 # CONFIGURACIÓN GLOBAL
@@ -1641,10 +1916,13 @@ actualizarGrafico();actualizarResumen();
     return html
 
 # ================================================================================
-# INTERFAZ PRINCIPAL DE STREAMLIT
+# INTERFAZ PRINCIPAL
 # ================================================================================
 def main():
-    """Función principal de la aplicación"""
+    """Función principal de la aplicación con interfaz de pantalla completa"""
+    
+    # Aplicar estilos personalizados
+    apply_custom_styles()
     
     # ============================================================
     # INICIALIZAR ESTADO DE SESIÓN
@@ -1661,10 +1939,6 @@ def main():
         st.session_state.diametro_maximo = None
     if 'resultados' not in st.session_state:
         st.session_state.resultados = None
-    if 'config_aplicada' not in st.session_state:
-        st.session_state.config_aplicada = False
-    if 'log_messages' not in st.session_state:
-        st.session_state.log_messages = []
     if 'dxf_loaded' not in st.session_state:
         st.session_state.dxf_loaded = False
     if 'dxf_layers' not in st.session_state:
@@ -1683,590 +1957,539 @@ def main():
         st.session_state.unidad_dibujo = "mm"
     if 'factor_conversion' not in st.session_state:
         st.session_state.factor_conversion = 1000
-    if 'paso_actual' not in st.session_state:
-        st.session_state.paso_actual = 1
 
     # ============================================================
-    # BARRA LATERAL - SOLO CONTROLES ESENCIALES
+    # HEADER SUPERIOR
     # ============================================================
-    with st.sidebar:
-        # Logo compacto
-        st.markdown("""
-        <div style="text-align:center; padding:5px 0;">
-            <h1 style="font-size:1.8em; margin:0;">💧</h1>
-            <h2 style="font-size:1.2em; margin:0;">Hydro Domus Py</h2>
-            <p style="font-size:0.8em; color:#888; margin:0;">Análisis Hidráulico v2.1</p>
+    st.markdown(f"""
+    <div class="main-header">
+        <div class="logo-section">
+            <span class="logo-icon">💧</span>
+            <div>
+                <h1 class="title">Hydro Domus Py</h1>
+                <p class="subtitle">Análisis Hidráulico para Redes Internas • NTC 1500 - RAS</p>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # ===== CARGAR DXF =====
-        st.markdown("### 📁 Cargar DXF")
-        
-        dxf_file = st.file_uploader(
-            "Seleccionar archivo DXF",
-            type=['dxf'],
-            help="Cargue el plano hidrosanitario",
-            key="dxf_uploader_sidebar"
-        )
-        
-        # Unidades
-        unidad_seleccionada = st.selectbox(
-            "Unidades:",
-            options=list(UNIDADES_DIBUJO.keys()),
-            format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']}",
-            key="unidad_select_sidebar"
-        )
-        st.session_state.unidad_dibujo = unidad_seleccionada
-        st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
-        
-        # ===== PROCESAR DXF (CORREGIDO) =====
-        if dxf_file is not None:
-            st.success(f"✅ Archivo cargado: {dxf_file.name}")
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
-                tmp.write(dxf_file.getvalue())
-                tmp_path = tmp.name
-                st.session_state.tmp_dxf_path = tmp_path
-            
-            try:
-                reader = DXFReader(tmp_path)
-                reader.set_log_callback(lambda msg, lvl: None)
-                layers = reader.obtener_layers()
-                st.session_state.dxf_layers = layers
-                st.session_state.dxf_loaded = True
-                st.session_state.dxf_reader = reader
-                
-                st.info(f"📋 {len(layers)} layers encontrados")
-                
-                selected = st.multiselect(
-                    "Seleccionar layers:",
-                    options=layers,
-                    default=layers[:3] if len(layers) >= 3 else layers,
-                    key="layer_selector_sidebar"
-                )
-                
-                if selected:
-                    st.session_state.selected_layers = selected
-                    if st.button("🚀 Construir Red", type="primary", use_container_width=True, key="build_red_sidebar"):
-                        with st.spinner("Construyendo red..."):
-                            lineas_raw = reader.extraer_lineas(selected)
-                            if lineas_raw:
-                                factor = st.session_state.factor_conversion
-                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
-                                nodos_dict, tuberias = construir_red(lineas)
-                                
-                                red = RedHidraulica()
-                                for (x, y, z), nid in nodos_dict.items():
-                                    red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
-                                for t in tuberias:
-                                    red.agregar_tuberia(t)
-                                
-                                st.session_state.red = red
-                                
-                                if len(red.nodos) > 0:
-                                    primer_nodo = list(red.nodos.keys())[0]
-                                    red.nodo_entrada_id = primer_nodo
-                                    red.nodos[primer_nodo].es_entrada = True
-                                    ajustar_cotas_relativas(red)
-                                
-                                st.session_state.paso_actual = 2
-                                st.success(f"✅ Red: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
-                                st.rerun()
-                            else:
-                                st.error("No se encontraron líneas en los layers seleccionados")
-                else:
-                    st.warning("Seleccione al menos un layer")
-                    
-            except Exception as e:
-                st.error(f"Error leyendo DXF: {e}")
-                st.session_state.dxf_loaded = False
-            
-            if st.session_state.tmp_dxf_path and os.path.exists(st.session_state.tmp_dxf_path):
-                try:
-                    os.unlink(st.session_state.tmp_dxf_path)
-                    st.session_state.tmp_dxf_path = None
-                except:
-                    pass
-        
-        st.divider()
-        
-        # ===== INDICADOR DE ESTADO =====
-        st.markdown("### 📊 Estado")
-        if st.session_state.red is not None:
-            st.success(f"✅ Red cargada")
-            st.caption(f"🔢 {len(st.session_state.red.nodos)} nodos")
-            st.caption(f"🔗 {len(st.session_state.red.tuberias)} tuberías")
-            if st.session_state.red.nodo_entrada_id is not None:
-                st.success(f"🚰 Entrada: Nodo {st.session_state.red.nodo_entrada_id}")
-            else:
-                st.warning("⚠️ Sin entrada")
-        else:
-            st.info("⏳ Cargue un DXF")
-        
-        st.divider()
-        
-        # ===== PARÁMETROS RÁPIDOS =====
-        with st.expander("⚙️ Parámetros", expanded=False):
-            presion = st.number_input(
-                "Presión (mca)",
-                value=st.session_state.presion_entrada,
-                min_value=1.0,
-                max_value=50.0,
-                step=0.5,
-                key="presion_sidebar"
-            )
-            st.session_state.presion_entrada = presion
-            
-            tipo_ocup = st.selectbox(
-                "Tipo edificación:",
-                options=list(TIPOS_OCUPACION_AGUA.keys()),
-                index=list(TIPOS_OCUPACION_AGUA.keys()).index(st.session_state.tipo_ocupacion) 
-                     if st.session_state.tipo_ocupacion in TIPOS_OCUPACION_AGUA else 0,
-                key="tipo_ocup_sidebar"
-            )
-            st.session_state.tipo_ocupacion = tipo_ocup
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                vel_min = st.number_input("Vel. mín", value=st.session_state.vel_min, min_value=0.1, max_value=5.0, step=0.1, key="vel_min_sidebar")
-                st.session_state.vel_min = vel_min
-            with col2:
-                vel_max = st.number_input("Vel. máx", value=st.session_state.vel_max, min_value=0.5, max_value=10.0, step=0.1, key="vel_max_sidebar")
-                st.session_state.vel_max = vel_max
-            
-            restringir = st.checkbox("Restringir diámetro", key="restringir_sidebar")
-            if restringir:
-                diam_max = st.selectbox("Diámetro máximo:", options=list(DIAMETROS_PAVCO.keys()), key="diam_max_sidebar")
-                st.session_state.diametro_maximo = DIAMETROS_PAVCO[diam_max]
-            else:
-                st.session_state.diametro_maximo = None
-        
-        # ===== BOTÓN EJECUTAR =====
-        if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
-            st.divider()
-            if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True, key="ejecutar_sidebar"):
-                with st.spinner("Ejecutando análisis..."):
-                    analyzer = HydraulicAnalyzer(
-                        st.session_state.red,
-                        None,
-                        st.session_state.diametro_maximo
-                    )
-                    analyzer.ejecutar()
-                    st.session_state.analyzer = analyzer
-                    
-                    presiones = [n.presion_mca for n in st.session_state.red.nodos.values() if n.presion_mca is not None]
-                    ug_acumulada = st.session_state.red.calcular_ug_acumulada()
-                    ug_total = ug_acumulada.get(st.session_state.red.nodo_entrada_id, 0)
-                    caudal_total = caudal_por_ug(ug_total, st.session_state.tipo_ocupacion)
-                    
-                    st.session_state.resultados = {
-                        'presiones': presiones,
-                        'ug_total': ug_total,
-                        'caudal_total': caudal_total,
-                        'cumple': min(presiones) >= PRESION_MIN_NORMA if presiones else False
-                    }
-                    
-                    st.success("✅ Análisis completado")
-                    st.rerun()
-        elif st.session_state.red is not None:
-            st.info("Configure el nodo de entrada en 'Configuración 3D'")
-        else:
-            st.info("Cargue un DXF primero")
-    
+        <div class="status-section">
+            <span class="status-badge">
+                <span class="dot {get_status_color(st.session_state.red)}"></span>
+                {get_status_text(st.session_state.red)}
+            </span>
+            <span class="status-badge">
+                🔢 {len(st.session_state.red.nodos) if st.session_state.red else 0} nodos
+            </span>
+            <span class="status-badge">
+                🔗 {len(st.session_state.red.tuberias) if st.session_state.red else 0} tuberías
+            </span>
+            {f'<span class="status-badge">🚰 Entrada: Nodo {st.session_state.red.nodo_entrada_id}</span>' if st.session_state.red and st.session_state.red.nodo_entrada_id is not None else ''}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # ============================================================
-    # ÁREA PRINCIPAL - CONTENIDO DINÁMICO
+    # BARRA DE HERRAMIENTAS
+    # ============================================================
+    st.markdown("""
+    <div class="toolbar">
+        <div class="tool-group">
+            <span style="color:rgba(255,255,255,0.6);font-size:0.8rem;">📁</span>
+    """, unsafe_allow_html=True)
+    
+    # File uploader en línea
+    dxf_file = st.file_uploader(
+        "Cargar DXF",
+        type=['dxf'],
+        label_visibility="collapsed",
+        key="dxf_uploader_top"
+    )
+    
+    # Selector de unidades
+    unidad_seleccionada = st.selectbox(
+        "Unidades",
+        options=list(UNIDADES_DIBUJO.keys()),
+        format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']}",
+        key="unidad_select_top",
+        label_visibility="collapsed"
+    )
+    st.session_state.unidad_dibujo = unidad_seleccionada
+    st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
+    
+    st.markdown("""
+        <span class="divider"></span>
+        </div>
+        <div class="tool-group">
+    """, unsafe_allow_html=True)
+    
+    # Botones de acción rápidos
+    col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
+    
+    with col_btn1:
+        if st.button("🚀 Construir Red", type="primary", use_container_width=True, key="btn_build"):
+            if dxf_file is not None:
+                procesar_dxf(dxf_file)
+            else:
+                st.warning("⚠️ Cargue un archivo DXF primero")
+    
+    with col_btn2:
+        if st.button("🎯 Configurar 3D", use_container_width=True, key="btn_config"):
+            if st.session_state.red is not None:
+                st.session_state.show_config = True
+            else:
+                st.warning("⚠️ Construya la red primero")
+    
+    with col_btn3:
+        if st.button("🚀 Ejecutar", type="primary", use_container_width=True, key="btn_run"):
+            if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
+                ejecutar_analisis()
+            else:
+                st.warning("⚠️ Configure la red primero")
+    
+    with col_btn4:
+        if st.button("📊 Exportar", use_container_width=True, key="btn_export"):
+            if st.session_state.red is not None and st.session_state.resultados:
+                exportar_resultados()
+            else:
+                st.warning("⚠️ Ejecute el análisis primero")
+    
+    with col_btn5:
+        if st.button("🔄 Reset", use_container_width=True, key="btn_reset"):
+            st.session_state.red = None
+            st.session_state.analyzer = None
+            st.session_state.resultados = None
+            st.rerun()
+    
+    st.markdown("""
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ============================================================
+    # PROCESAR DXF
+    # ============================================================
+    if dxf_file is not None and st.session_state.red is None:
+        procesar_dxf(dxf_file)
+
+    # ============================================================
+    # ÁREA PRINCIPAL - CONTENIDO
     # ============================================================
     if st.session_state.red is None:
         # Pantalla de bienvenida
-        st.title("💧 Hydro Domus Py")
-        st.markdown("### Análisis Hidráulico para Redes Internas de Agua Potable")
-        st.divider()
-        
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown("""
-            **Pasos para realizar un análisis:**
-            
-            1. 📁 **Cargar archivo DXF** del plano hidrosanitario
-            2. 📐 **Seleccionar las unidades** del dibujo (mm, cm, m, in, ft)
-            3. 📐 **Seleccionar los layers** que contienen las tuberías
-            4. 🔧 **Configurar nodos** (entrada, aparatos, válvulas) en la pestaña "Configuración 3D"
-            5. ⚙️ **Ajustar parámetros** de cálculo
-            6. 🚀 **Ejecutar análisis** y revisar resultados
-            """)
-        
-        with col2:
-            st.info("""
-            **📐 Características:**
-            - Lectura DXF (LINE, LWPOLYLINE, POLYLINE, 3DPOLYLINE)
-            - Análisis Darcy-Weisbach
-            - Método de Hunter
-            - Visualización 3D interactiva
-            - Exportación a Excel
-            """)
-    
+        mostrar_welcome()
     else:
-        # Mostrar resultados
-        red = st.session_state.red
-        resultados = st.session_state.resultados
+        mostrar_resultados()
+
+# ================================================================================
+# FUNCIONES AUXILIARES DE INTERFAZ
+# ================================================================================
+def get_status_color(red):
+    """Determina el color del estado según la red"""
+    if red is None:
+        return "dot-gray"
+    if red.nodo_entrada_id is None:
+        return "dot-yellow"
+    return "dot-green"
+
+def get_status_text(red):
+    """Obtiene el texto del estado"""
+    if red is None:
+        return "⏳ Sin red"
+    if red.nodo_entrada_id is None:
+        return "⚙️ Sin entrada"
+    return "✅ Red lista"
+
+def procesar_dxf(dxf_file):
+    """Procesa el archivo DXF y construye la red"""
+    with st.spinner("🔄 Construyendo red..."):
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
+            tmp.write(dxf_file.getvalue())
+            tmp_path = tmp.name
+            st.session_state.tmp_dxf_path = tmp_path
         
-        # ============================================================
-        # PESTAÑAS
-        # ============================================================
-        tab_config, tab_resumen, tab_viz, tab_perfil, tab_tablas, tab_materiales = st.tabs([
-            "🔧 Configuración 3D",
-            "📊 Resumen",
-            "🌐 Visualización 3D",
-            "📈 Perfil",
-            "📋 Tablas",
-            "📦 Materiales"
-        ])
-        
-        # ============================================================
-        # PESTAÑA 1: CONFIGURACIÓN 3D
-        # ============================================================
-        with tab_config:
-            st.subheader("🔧 Configuración Interactiva de la Red")
+        try:
+            reader = DXFReader(tmp_path)
+            reader.set_log_callback(lambda msg, lvl: None)
+            layers = reader.obtener_layers()
             
-            col1, col2, col3 = st.columns(3)
+            # Seleccionar layers en un diálogo
+            selected = st.multiselect(
+                "Seleccionar layers con tuberías:",
+                options=layers,
+                default=layers[:3] if len(layers) >= 3 else layers,
+                key="layer_selector_build"
+            )
+            
+            if selected:
+                lineas_raw = reader.extraer_lineas(selected)
+                if lineas_raw:
+                    factor = st.session_state.factor_conversion
+                    lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
+                    nodos_dict, tuberias = construir_red(lineas)
+                    
+                    red = RedHidraulica()
+                    for (x, y, z), nid in nodos_dict.items():
+                        red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
+                    for t in tuberias:
+                        red.agregar_tuberia(t)
+                    
+                    st.session_state.red = red
+                    
+                    if len(red.nodos) > 0:
+                        primer_nodo = list(red.nodos.keys())[0]
+                        red.nodo_entrada_id = primer_nodo
+                        red.nodos[primer_nodo].es_entrada = True
+                        ajustar_cotas_relativas(red)
+                    
+                    st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
+                    st.rerun()
+                else:
+                    st.error("❌ No se encontraron líneas en los layers seleccionados")
+            else:
+                st.warning("⚠️ Seleccione al menos un layer")
+                
+        except Exception as e:
+            st.error(f"❌ Error leyendo DXF: {e}")
+        
+        if st.session_state.tmp_dxf_path and os.path.exists(st.session_state.tmp_dxf_path):
+            try:
+                os.unlink(st.session_state.tmp_dxf_path)
+                st.session_state.tmp_dxf_path = None
+            except:
+                pass
+
+def ejecutar_analisis():
+    """Ejecuta el análisis hidráulico"""
+    with st.spinner("🚀 Ejecutando análisis..."):
+        analyzer = HydraulicAnalyzer(
+            st.session_state.red,
+            None,
+            st.session_state.diametro_maximo
+        )
+        analyzer.ejecutar()
+        st.session_state.analyzer = analyzer
+        
+        presiones = [n.presion_mca for n in st.session_state.red.nodos.values() if n.presion_mca is not None]
+        ug_acumulada = st.session_state.red.calcular_ug_acumulada()
+        ug_total = ug_acumulada.get(st.session_state.red.nodo_entrada_id, 0)
+        caudal_total = caudal_por_ug(ug_total, st.session_state.tipo_ocupacion)
+        
+        st.session_state.resultados = {
+            'presiones': presiones,
+            'ug_total': ug_total,
+            'caudal_total': caudal_total,
+            'cumple': min(presiones) >= PRESION_MIN_NORMA if presiones else False
+        }
+        
+        st.success("✅ Análisis completado")
+        st.rerun()
+
+def exportar_resultados():
+    """Exporta resultados a Excel"""
+    try:
+        excel_data = exportar_excel(st.session_state.red)
+        b64 = base64.b64encode(excel_data).decode()
+        href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="HydroDomusPy_Reporte_{datetime.now().strftime("%Y%m%d")}.xlsx">📥 Descargar Excel</a>'
+        st.markdown(href, unsafe_allow_html=True)
+        st.success("✅ Excel generado")
+    except Exception as e:
+        st.error(f"Error exportando: {e}")
+
+def mostrar_welcome():
+    """Muestra la pantalla de bienvenida"""
+    st.markdown("""
+    <div style="text-align:center; padding:2rem 0;">
+        <h1 style="font-size:3rem; margin:0;">💧</h1>
+        <h2 style="color:#3498db;">Hydro Domus Py</h2>
+        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">
+            Análisis Hidráulico para Redes Internas de Agua Potable
+        </p>
+        <p style="color:rgba(255,255,255,0.5);">
+            Cargue un archivo DXF en la barra de herramientas para comenzar
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Características en tarjetas
+    col1, col2, col3, col4 = st.columns(4)
+    
+    features = [
+        ("📁", "Lectura DXF", "Soporta LINE, LWPOLYLINE, POLYLINE y 3DPOLYLINE"),
+        ("🔧", "Análisis Hidráulico", "Caudales, presiones y pérdidas (Darcy-Weisbach)"),
+        ("📊", "Visualización 3D", "Gráficos interactivos con Plotly"),
+        ("📋", "Reportes", "Exportación a Excel con materiales")
+    ]
+    
+    for col, (icon, title, desc) in zip([col1, col2, col3, col4], features):
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:2.5rem;">{icon}</div>
+                <div style="font-weight:600;margin:0.5rem 0;">{title}</div>
+                <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);">{desc}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+def mostrar_resultados():
+    """Muestra los resultados en pestañas"""
+    red = st.session_state.red
+    resultados = st.session_state.resultados
+    
+    # Métricas rápidas
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{len(red.nodos)}</div>
+            <div class="metric-label">🔢 Nodos</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{len(red.tuberias)}</div>
+            <div class="metric-label">🔗 Tuberías</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{len(red.accesorios)}</div>
+            <div class="metric-label">🔧 Accesorios</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
+        caudal = resultados['caudal_total'] if resultados else 0
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{caudal:.2f}</div>
+            <div class="metric-label">💧 Caudal (L/s)</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col5:
+        ug = resultados['ug_total'] if resultados else 0
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{ug:.0f}</div>
+            <div class="metric-label">📊 UG totales</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # Pestañas
+    tabs = st.tabs([
+        "🔧 Configuración 3D",
+        "📊 Resumen",
+        "🌐 Visualización 3D",
+        "📈 Perfil",
+        "📋 Tablas",
+        "📦 Materiales"
+    ])
+    
+    # ============================================================
+    # PESTAÑA 1: CONFIGURACIÓN 3D
+    # ============================================================
+    with tabs[0]:
+        st.subheader("🔧 Configuración Interactiva de la Red")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"📌 Nodos: {len(red.nodos)} | 🚰 Entrada: {red.nodo_entrada_id or '❌ Sin asignar'}")
+        
+        nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
+                       "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
+                       "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
+                      for n in red.nodos.values()]
+        
+        tuberias_data = []
+        for t in red.tuberias.values():
+            n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
+            tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
+                                  "x2": n2.x, "y2": n2.y, "z2": n2.z})
+        
+        html_content = generar_html_config(nodos_data, tuberias_data)
+        st.components.v1.html(html_content, height=650, scrolling=True)
+        
+        # Asignación manual
+        with st.expander("📌 Asignación Manual"):
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("🔢 Nodos", len(red.nodos))
+                nodo_ids = list(red.nodos.keys())
+                entrada_actual = red.nodo_entrada_id
+                nodo_entrada = st.selectbox(
+                    "Nodo de entrada:",
+                    options=nodo_ids,
+                    index=nodo_ids.index(entrada_actual) if entrada_actual in nodo_ids else 0,
+                    format_func=lambda x: f"Nodo {x}",
+                    key="nodo_entrada_main"
+                )
+                if nodo_entrada != entrada_actual and st.button("✅ Establecer Entrada"):
+                    for n in red.nodos.values():
+                        n.es_entrada = False
+                    red.nodo_entrada_id = nodo_entrada
+                    red.nodos[nodo_entrada].es_entrada = True
+                    ajustar_cotas_relativas(red)
+                    st.success(f"✅ Nodo {nodo_entrada} como entrada")
+                    st.rerun()
+            
             with col2:
-                st.metric("🔗 Tuberías", len(red.tuberias))
-            with col3:
-                entrada_id = red.nodo_entrada_id or "❌ Sin asignar"
-                st.metric("🚰 Nodo entrada", entrada_id)
+                nodo_aparato = st.selectbox(
+                    "Nodo para aparato:",
+                    options=nodo_ids,
+                    format_func=lambda x: f"Nodo {x} ({red.nodos[x].tipo_aparato or 'Ninguno'})",
+                    key="nodo_aparato_main"
+                )
+                tipo_aparato = st.selectbox(
+                    "Tipo de aparato:",
+                    options=[""] + list(UNIDADES_GASTO.keys()),
+                    key="tipo_aparato_main"
+                )
+                if tipo_aparato and st.button("📌 Asignar Aparato"):
+                    if nodo_aparato == red.nodo_entrada_id:
+                        st.error("⚠️ El nodo de entrada no puede tener aparato")
+                    else:
+                        red.nodos[nodo_aparato].tipo_aparato = tipo_aparato
+                        st.success(f"✅ Aparato '{tipo_aparato}' asignado")
+                        st.rerun()
+
+    # ============================================================
+    # PESTAÑA 2: RESUMEN
+    # ============================================================
+    with tabs[1]:
+        st.subheader("📊 Resumen del Análisis")
+        
+        if resultados:
+            presiones = resultados['presiones']
+            if presiones:
+                p_min, p_max = min(presiones), max(presiones)
+                p_prom = sum(presiones) / len(presiones)
+                
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💪 Presión entrada", f"{st.session_state.presion_entrada:.1f} mca")
+                col2.metric("⬆️ Presión máxima", f"{p_max:.2f} mca")
+                col3.metric("⬇️ Presión mínima", f"{p_min:.2f} mca")
+                col4.metric("📊 Presión promedio", f"{p_prom:.2f} mca")
+                
+                if resultados['cumple']:
+                    st.success(f"✅ CUMPLE NORMA NTC 1500 (Presión mínima ≥ {PRESION_MIN_NORMA} mca)")
+                else:
+                    st.error(f"❌ NO CUMPLE NORMA NTC 1500 (Presión mínima: {p_min:.2f} mca < {PRESION_MIN_NORMA} mca)")
             
             st.divider()
             
-            st.markdown("### 🎯 Configurar Nodos en 3D")
-            st.caption("💡 Haga clic en cualquier nodo del gráfico para asignar entrada, aparatos o válvulas")
-            
-            nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
-                           "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
-                           "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
-                          for n in red.nodos.values()]
-            
-            tuberias_data = []
-            for t in red.tuberias.values():
-                n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
-                tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
-                                      "x2": n2.x, "y2": n2.y, "z2": n2.z})
-            
-            html_content = generar_html_config(nodos_data, tuberias_data)
-            
-            with st.container():
-                st.components.v1.html(html_content, height=650, scrolling=True)
-            
-            # ... resto de la pestaña config (igual que antes)
-            with st.expander("📌 Asignación Manual (alternativa)"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    nodo_ids = list(red.nodos.keys())
-                    entrada_actual = red.nodo_entrada_id
-                    nodo_entrada = st.selectbox(
-                        "Nodo de entrada:",
-                        options=nodo_ids,
-                        index=nodo_ids.index(entrada_actual) if entrada_actual in nodo_ids else 0,
-                        format_func=lambda x: f"Nodo {x} (X: {red.nodos[x].x:.1f}, Y: {red.nodos[x].y:.1f})",
-                        key="nodo_entrada_config"
-                    )
-                    
-                    if nodo_entrada != entrada_actual:
-                        if st.button("✅ Establecer como Entrada", key="set_entrada_config"):
-                            for n in red.nodos.values():
-                                n.es_entrada = False
-                            red.nodo_entrada_id = nodo_entrada
-                            red.nodos[nodo_entrada].es_entrada = True
-                            ajustar_cotas_relativas(red)
-                            st.success(f"✅ Nodo {nodo_entrada} establecido como entrada")
-                            st.rerun()
-                
-                with col2:
-                    nodo_aparato = st.selectbox(
-                        "Nodo para aparato:",
-                        options=nodo_ids,
-                        format_func=lambda x: f"Nodo {x} (Actual: {red.nodos[x].tipo_aparato or 'Ninguno'})",
-                        key="nodo_aparato_config"
-                    )
-                    
-                    tipo_aparato = st.selectbox(
-                        "Tipo de aparato:",
-                        options=[""] + list(UNIDADES_GASTO.keys()),
-                        key="tipo_aparato_config"
-                    )
-                    
-                    if tipo_aparato and st.button("📌 Asignar Aparato", key="set_aparato_config"):
-                        if nodo_aparato == red.nodo_entrada_id:
-                            st.error("⚠️ El nodo de entrada no puede tener aparato")
-                        else:
-                            red.nodos[nodo_aparato].tipo_aparato = tipo_aparato
-                            st.success(f"✅ Aparato '{tipo_aparato}' asignado al nodo {nodo_aparato}")
-                            st.rerun()
-            
-            col1, col2, col3 = st.columns(3)
-            
+            col1, col2 = st.columns(2)
             with col1:
-                config_file = st.file_uploader(
-                    "📂 Cargar configuración JSON",
-                    type=['json'],
-                    key="config_uploader",
-                    help="Cargue un archivo de configuración guardado anteriormente"
-                )
-                
-                if config_file is not None:
-                    try:
-                        config = json.loads(config_file.getvalue().decode('utf-8'))
-                        
-                        for n in red.nodos.values():
-                            n.es_entrada = False
-                            n.tipo_aparato = ""
-                            n.valvula_tipo = ""
-                            n.valvula_cerrada = False
-                        
-                        nodo_entrada_cfg = config.get("nodo_entrada")
-                        if nodo_entrada_cfg in red.nodos:
-                            red.nodo_entrada_id = nodo_entrada_cfg
-                            red.nodos[nodo_entrada_cfg].es_entrada = True
-                        
-                        for nodo_cfg in config.get("nodos", []):
-                            nid = nodo_cfg.get("id")
-                            if nid in red.nodos:
-                                if nodo_cfg.get("tipo_aparato"):
-                                    red.nodos[nid].tipo_aparato = nodo_cfg["tipo_aparato"]
-                                if nodo_cfg.get("valvula_tipo"):
-                                    red.nodos[nid].valvula_tipo = nodo_cfg["valvula_tipo"]
-                                    red.nodos[nid].valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
-                        
-                        ajustar_cotas_relativas(red)
-                        st.success("✅ Configuración cargada exitosamente")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error cargando configuración: {e}")
-            
+                if st.button("📊 Exportar a Excel", use_container_width=True):
+                    exportar_resultados()
             with col2:
-                if st.button("💾 Guardar Configuración", use_container_width=True, key="save_config_tab"):
+                if st.button("💾 Guardar Configuración", use_container_width=True):
                     config = {
                         "nodo_entrada": red.nodo_entrada_id,
-                        "nodos": [
-                            {
-                                "id": n.id,
-                                "tipo_aparato": n.tipo_aparato,
-                                "valvula_tipo": n.valvula_tipo,
-                                "valvula_cerrada": n.valvula_cerrada
-                            }
-                            for n in red.nodos.values()
-                        ],
+                        "nodos": [{"id": n.id, "tipo_aparato": n.tipo_aparato, 
+                                   "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada}
+                                  for n in red.nodos.values()],
                         "tipo_ocupacion": st.session_state.tipo_ocupacion,
-                        "presion_entrada": st.session_state.presion_entrada,
-                        "unidad_dibujo": st.session_state.unidad_dibujo
+                        "presion_entrada": st.session_state.presion_entrada
                     }
                     config_json = json.dumps(config, indent=2, ensure_ascii=False)
                     b64 = base64.b64encode(config_json.encode()).decode()
                     href = f'<a href="data:application/json;base64,{b64}" download="HydroDomusPy_config_{datetime.now().strftime("%Y%m%d")}.json">📥 Descargar Configuración</a>'
                     st.markdown(href, unsafe_allow_html=True)
-                    st.success("✅ Configuración lista para descargar")
+                    st.success("✅ Configuración lista")
+        else:
+            st.info("Ejecute el análisis para ver los resultados")
+
+    # ============================================================
+    # PESTAÑA 3: VISUALIZACIÓN 3D
+    # ============================================================
+    with tabs[2]:
+        st.subheader("🌐 Visualización 3D de Resultados")
+        if st.session_state.analyzer:
+            fig = generate_3d_plot(red, st.session_state.presion_entrada)
+            st.plotly_chart(fig, use_container_width=True, height=700)
+        else:
+            st.info("Ejecute el análisis para ver la visualización 3D")
+
+    # ============================================================
+    # PESTAÑA 4: PERFIL
+    # ============================================================
+    with tabs[3]:
+        st.subheader("📈 Perfil de Presiones")
+        if st.session_state.analyzer and red.nodo_entrada_id is not None:
+            fig = generar_perfil_presiones(red)
+            if fig:
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No se pudo generar el perfil")
+        else:
+            st.info("Ejecute el análisis para ver el perfil de presiones")
+
+    # ============================================================
+    # PESTAÑA 5: TABLAS
+    # ============================================================
+    with tabs[4]:
+        st.subheader("📋 Datos de la Red")
+        tabla = st.selectbox("Seleccionar tabla:", ["Nodos", "Tuberías", "Accesorios"])
+        
+        if tabla == "Nodos":
+            data = [{"ID": n.id, "X": round(n.x, 2), "Y": round(n.y, 2), "Z": round(n.z, 2),
+                     "Presión": round(n.presion_mca, 2) if n.presion_mca else None,
+                     "Aparato": n.tipo_aparato or "-",
+                     "Válvula": f"{n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})" if n.valvula_tipo else "-",
+                     "Entrada": "✓" if n.es_entrada else ""}
+                    for n in red.nodos.values()]
+            st.dataframe(data, use_container_width=True, height=400)
+        elif tabla == "Tuberías":
+            data = [{"ID": t.id, "Desde": t.nodo_inicio, "Hasta": t.nodo_fin,
+                     "Longitud": round(t.longitud_m, 2), "Diámetro": t.diametro_nominal_pulg,
+                     "DI (mm)": round(t.diametro_mm, 2), "Caudal": round(t.caudal_lps, 3),
+                     "Velocidad": round(t.velocidad_ms, 2), "Pérdida": round(t.perdida_mca, 3)}
+                    for t in red.tuberias.values()]
+            st.dataframe(data, use_container_width=True, height=400)
+        else:
+            data = []
+            for acc in red.accesorios:
+                diam = "N/A"
+                for t in red.tuberias.values():
+                    if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
+                        diam = t.diametro_nominal_pulg
+                        break
+                data.append({"ID": acc.id, "Tipo": acc.tipo.replace("_", " "),
+                            "Nodo": acc.nodo_id, "DN": diam,
+                            "Leq": round(acc.longitud_equivalente_m, 2),
+                            "Pérdida": round(acc.perdida_mca, 4)})
+            st.dataframe(data, use_container_width=True, height=400)
+
+    # ============================================================
+    # PESTAÑA 6: MATERIALES
+    # ============================================================
+    with tabs[5]:
+        st.subheader("📦 Estimación de Materiales")
+        if st.session_state.analyzer:
+            df_tuberias, df_accesorios, total_long, total_tramos, total_acc = generar_reporte_materiales(red)
             
-            with col3:
-                if st.button("🔄 Resetear Configuración", use_container_width=True, key="reset_config_tab"):
-                    if st.session_state.red:
-                        for n in st.session_state.red.nodos.values():
-                            n.es_entrada = False
-                            n.tipo_aparato = ""
-                            n.valvula_tipo = ""
-                            n.valvula_cerrada = False
-                        st.session_state.red.nodo_entrada_id = None
-                        st.success("✅ Configuración reseteada")
-                        st.rerun()
+            st.markdown("### 📏 Tuberías PVC")
+            st.dataframe(df_tuberias, use_container_width=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("📐 Longitud total", f"{total_long:.2f} m")
+            with col2:
+                st.metric("🔗 Tramos de 6m", f"{total_tramos}")
             
             st.divider()
-            st.markdown("### 📋 Resumen de Configuración")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                aparatos_asignados = sum(1 for n in red.nodos.values() if n.tipo_aparato)
-                st.metric("📌 Aparatos asignados", aparatos_asignados)
-            with col2:
-                valvulas_asignadas = sum(1 for n in red.nodos.values() if n.valvula_tipo)
-                st.metric("🔧 Válvulas asignadas", valvulas_asignadas)
-            with col3:
-                ug_total_config = sum(UNIDADES_GASTO.get(n.tipo_aparato, {}).get("ug", 0) for n in red.nodos.values() if n.tipo_aparato)
-                st.metric("📊 UG totales", f"{ug_total_config:.0f}")
-            
-            if aparatos_asignados > 0 or valvulas_asignadas > 0:
-                st.caption("Nodos configurados:")
-                nodos_config = []
-                for n in red.nodos.values():
-                    if n.tipo_aparato or n.valvula_tipo or n.es_entrada:
-                        estado = []
-                        if n.es_entrada:
-                            estado.append("🚰 Entrada")
-                        if n.tipo_aparato:
-                            estado.append(f"📌 {n.tipo_aparato}")
-                        if n.valvula_tipo:
-                            estado.append(f"🔧 {n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})")
-                        nodos_config.append(f"Nodo {n.id}: " + " | ".join(estado))
-                
-                st.text_area("", "\n".join(nodos_config), height=100, disabled=True)
-        
-        # ============================================================
-        # PESTAÑA 2: RESUMEN
-        # ============================================================
-        with tab_resumen:
-            st.subheader("📊 Resumen del Análisis")
-            
-            if resultados:
-                col1, col2, col3, col4, col5 = st.columns(5)
-                col1.metric("🔢 Nodos", len(red.nodos))
-                col2.metric("🔗 Tuberías", len(red.tuberias))
-                col3.metric("🔧 Accesorios", len(red.accesorios))
-                col4.metric("💧 Caudal total", f"{resultados['caudal_total']:.2f} L/s")
-                col5.metric("📊 UG totales", f"{resultados['ug_total']:.0f}")
-                
-                st.divider()
-                
-                if resultados['presiones']:
-                    p_min, p_max = min(resultados['presiones']), max(resultados['presiones'])
-                    p_prom = sum(resultados['presiones']) / len(resultados['presiones'])
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("💪 Presión entrada", f"{st.session_state.presion_entrada:.1f} mca")
-                    col2.metric("⬆️ Presión máxima", f"{p_max:.2f} mca")
-                    col3.metric("⬇️ Presión mínima", f"{p_min:.2f} mca")
-                    col4.metric("📊 Presión promedio", f"{p_prom:.2f} mca")
-                    
-                    if resultados['cumple']:
-                        st.success(f"✅ CUMPLE NORMA NTC 1500 (Presión mínima ≥ {PRESION_MIN_NORMA} mca)")
-                    else:
-                        st.error(f"❌ NO CUMPLE NORMA NTC 1500 (Presión mínima: {p_min:.2f} mca < {PRESION_MIN_NORMA} mca)")
-                
-                st.divider()
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("📊 Exportar a Excel", use_container_width=True):
-                        try:
-                            excel_data = exportar_excel(red)
-                            b64 = base64.b64encode(excel_data).decode()
-                            href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="HydroDomusPy_Reporte_{datetime.now().strftime("%Y%m%d")}.xlsx">📥 Descargar Excel</a>'
-                            st.markdown(href, unsafe_allow_html=True)
-                            st.success("✅ Excel generado")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                
-                with col2:
-                    if st.button("💾 Guardar Configuración", use_container_width=True):
-                        config = {
-                            "nodo_entrada": red.nodo_entrada_id,
-                            "nodos": [
-                                {"id": n.id, "tipo_aparato": n.tipo_aparato, 
-                                 "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada}
-                                for n in red.nodos.values()
-                            ],
-                            "tipo_ocupacion": st.session_state.tipo_ocupacion,
-                            "presion_entrada": st.session_state.presion_entrada
-                        }
-                        config_json = json.dumps(config, indent=2, ensure_ascii=False)
-                        b64 = base64.b64encode(config_json.encode()).decode()
-                        href = f'<a href="data:application/json;base64,{b64}" download="HydroDomusPy_config_{datetime.now().strftime("%Y%m%d")}.json">📥 Descargar Configuración</a>'
-                        st.markdown(href, unsafe_allow_html=True)
-                        st.success("✅ Configuración lista")
-            else:
-                st.info("Ejecute el análisis para ver los resultados")
-        
-        # ============================================================
-        # PESTAÑA 3: VISUALIZACIÓN 3D
-        # ============================================================
-        with tab_viz:
-            st.subheader("🌐 Visualización 3D de Resultados")
-            if st.session_state.analyzer:
-                fig = generate_3d_plot(red, st.session_state.presion_entrada)
-                st.plotly_chart(fig, use_container_width=True, height=700)
-            else:
-                st.info("Ejecute el análisis para ver la visualización 3D")
-        
-        # ============================================================
-        # PESTAÑA 4: PERFIL
-        # ============================================================
-        with tab_perfil:
-            st.subheader("📈 Perfil de Presiones")
-            if st.session_state.analyzer and red.nodo_entrada_id is not None:
-                fig = generar_perfil_presiones(red)
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.warning("No se pudo generar el perfil")
-            else:
-                st.info("Ejecute el análisis para ver el perfil de presiones")
-        
-        # ============================================================
-        # PESTAÑA 5: TABLAS
-        # ============================================================
-        with tab_tablas:
-            st.subheader("📋 Datos de la Red")
-            tabla = st.selectbox("Seleccionar tabla:", ["Nodos", "Tuberías", "Accesorios"])
-            
-            if tabla == "Nodos":
-                data = [{
-                    "ID": n.id, "X": round(n.x, 2), "Y": round(n.y, 2), "Z": round(n.z, 2),
-                    "Presión": round(n.presion_mca, 2) if n.presion_mca else None,
-                    "Aparato": n.tipo_aparato or "-",
-                    "Válvula": f"{n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})" if n.valvula_tipo else "-",
-                    "Entrada": "✓" if n.es_entrada else ""
-                } for n in red.nodos.values()]
-                st.dataframe(data, use_container_width=True, height=400)
-            
-            elif tabla == "Tuberías":
-                data = [{
-                    "ID": t.id, "Desde": t.nodo_inicio, "Hasta": t.nodo_fin,
-                    "Longitud": round(t.longitud_m, 2), "Diámetro": t.diametro_nominal_pulg,
-                    "DI (mm)": round(t.diametro_mm, 2), "Caudal": round(t.caudal_lps, 3),
-                    "Velocidad": round(t.velocidad_ms, 2), "Pérdida": round(t.perdida_mca, 3)
-                } for t in red.tuberias.values()]
-                st.dataframe(data, use_container_width=True, height=400)
-            
-            else:
-                data = []
-                for acc in red.accesorios:
-                    diam = "N/A"
-                    for t in red.tuberias.values():
-                        if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
-                            diam = t.diametro_nominal_pulg
-                            break
-                    data.append({
-                        "ID": acc.id, "Tipo": acc.tipo.replace("_", " "),
-                        "Nodo": acc.nodo_id, "DN": diam,
-                        "Leq": round(acc.longitud_equivalente_m, 2),
-                        "Pérdida": round(acc.perdida_mca, 4)
-                    })
-                st.dataframe(data, use_container_width=True, height=400)
-        
-        # ============================================================
-        # PESTAÑA 6: MATERIALES
-        # ============================================================
-        with tab_materiales:
-            st.subheader("📦 Estimación de Materiales")
-            if st.session_state.analyzer:
-                df_tuberias, df_accesorios, total_long, total_tramos, total_acc = generar_reporte_materiales(red)
-                
-                st.markdown("### 📏 Tuberías PVC")
-                st.dataframe(df_tuberias, use_container_width=True)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("📐 Longitud total", f"{total_long:.2f} m")
-                with col2:
-                    st.metric("🔗 Tramos de 6m", f"{total_tramos}")
-                
-                st.divider()
-                st.markdown("### 🔧 Accesorios")
-                st.dataframe(df_accesorios, use_container_width=True)
-                st.metric("📊 Total accesorios", f"{total_acc}")
-            else:
-                st.info("Ejecute el análisis para ver la estimación de materiales")
+            st.markdown("### 🔧 Accesorios")
+            st.dataframe(df_accesorios, use_container_width=True)
+            st.metric("📊 Total accesorios", f"{total_acc}")
+        else:
+            st.info("Ejecute el análisis para ver la estimación de materiales")
+
+# ================================================================================
+# NOTA: Todas las clases y funciones del código original se mantienen aquí
+# Incluyendo: RedHidraulica, HydraulicAnalyzer, DXFReader, generar_html_config,
+# generate_3d_plot, generar_perfil_presiones, exportar_excel, etc.
+# ================================================================================
+
+# Por razones de espacio, las clases y funciones largas se mantienen
+# igual que en el código original. La diferencia está en la interfaz.
 
 # ================================================================================
 # EJECUTAR APLICACIÓN
