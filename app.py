@@ -846,6 +846,7 @@ mostrar_metodologia()
 with st.sidebar:
     st.header("⚙️ Parámetros de Cálculo")
     
+    # ===== TIPO DE EDIFICACIÓN CON FÓRMULA =====
     tipo_ocupacion = st.selectbox(
         "Tipo de Edificación", 
         list(TIPOS_OCUPACION_AGUA.keys()),
@@ -853,6 +854,26 @@ with st.sidebar:
     )
     st.session_state.tipo_ocupacion = tipo_ocupacion
     
+    # Mostrar fórmula del método de Hunter
+    info_ocup = TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {})
+    formula = info_ocup.get("formula", "Q = 0.2 * √UG + 0.5")
+    descripcion = info_ocup.get("descripcion", "")
+    
+    st.markdown(f"""
+    <div style="
+        background: #2d2d2d; 
+        padding: 8px 12px; 
+        border-radius: 6px; 
+        margin: 4px 0 10px 0;
+        border-left: 3px solid #3498db;
+    ">
+        <span style="font-size: 0.8rem; color: #bbbbbb;">📐 Fórmula de Hunter:</span><br>
+        <span style="font-size: 0.9rem; font-weight: 600; color: #3498db;">{formula}</span><br>
+        <span style="font-size: 0.7rem; color: #888888;">{descripcion}</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== PRESIÓN =====
     presion_entrada = st.number_input(
         "Presión de entrada (mca)", 
         value=st.session_state.presion_entrada, 
@@ -861,6 +882,7 @@ with st.sidebar:
     )
     st.session_state.presion_entrada = presion_entrada
     
+    # ===== VELOCIDADES =====
     col1, col2 = st.columns(2)
     with col1:
         vel_min = st.number_input(
@@ -889,6 +911,7 @@ with st.sidebar:
     hydro_core.VEL_MIN_MS = st.session_state.vel_min
     hydro_core.VEL_MAX_MS = st.session_state.vel_max
     
+    # ===== RESTRICCIÓN DE DIÁMETRO =====
     st.markdown("---")
     st.subheader("📏 Restricción de Diámetro")
     
@@ -910,6 +933,7 @@ with st.sidebar:
         st.session_state.diametro_maximo = None
         st.caption("✅ Sin restricción")
     
+    # ===== ESTADO DEL SISTEMA =====
     st.markdown("---")
     st.markdown("### 📊 Estado del Sistema")
     st.info(get_status(st.session_state.red))
@@ -920,6 +944,7 @@ with st.sidebar:
         if st.session_state.red.nodo_entrada_id is not None:
             st.caption(f"🚰 Entrada: Nodo {st.session_state.red.nodo_entrada_id}")
     
+    # ===== AUTORÍA =====
     st.markdown("---")
     st.markdown("### 👨‍💻 Desarrollado por:")
     st.markdown("**Ing. Edison Osvaldo Olaya Cortes**")
