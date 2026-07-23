@@ -84,7 +84,7 @@ from hydro_core import (
     RedHidraulica, Nodo, Tuberia, HydraulicAnalyzer, generate_3d_plot,
     TIPOS_OCUPACION_AGUA, UNIDADES_GASTO, DIAMETROS_PAVCO, 
     ajustar_cotas_relativas, PRESION_MIN_NORMA, diametro_a_numero,
-    caudal_por_ug
+    caudal_por_ug, VISCOSIDAD_AGUA
 )
 
 from hydro_ui import mostrar_metodologia
@@ -1282,12 +1282,25 @@ if st.session_state.red is not None:
                 }
             )
         
-        # ===== PESTAÑA 4: TUBERÍAS =====
+        # ===== PESTAÑA 4: TUBERÍAS =====#
+        
         with tab4:
+            st.subheader("📏 Datos de Tuberías")
+            
             datos_tubos = []
             for t in red.tuberias.values():
-                Re = t.f_friccion * 0
-                f = t.f_friccion if hasattr(t, 'f_friccion') else 0.02
+                # Calcular Número de Reynolds: Re = (v * D) / ν
+                v = t.velocidad_ms
+                D = t.diametro_m  # Diámetro en metros
+                nu = VISCOSIDAD_AGUA  # 1e-6 m²/s
+                
+                if v > 0 and D > 0:
+                    Re = (v * D) / nu
+                else:
+                    Re = None
+                
+                # Factor de fricción
+                f = t.f_friccion if hasattr(t, 'f_friccion') and t.f_friccion else 0.02
                 
                 datos_tubos.append({
                     "ID": t.id,
@@ -1298,7 +1311,7 @@ if st.session_state.red is not None:
                     "DI (mm)": round(t.diametro_mm, 2),
                     "Caudal (L/s)": round(t.caudal_lps, 3),
                     "Vel (m/s)": round(t.velocidad_ms, 2),
-                    "Re": round(Re, 0) if Re else None,
+                    "Re": round(Re, 0) if Re is not None else None,
                     "f": round(f, 4) if f else None,
                     "Pérdida (mca)": round(t.perdida_mca, 4)
                 })
@@ -1313,8 +1326,8 @@ if st.session_state.red is not None:
                     "DI (mm)": st.column_config.NumberColumn("DI (mm)", format="%.2f"),
                     "Caudal (L/s)": st.column_config.NumberColumn("Caudal (L/s)", format="%.3f"),
                     "Vel (m/s)": st.column_config.NumberColumn("Vel (m/s)", format="%.2f"),
-                    "Re": st.column_config.NumberColumn("Re", format="%.0f"),
-                    "f": st.column_config.NumberColumn("f", format="%.4f"),
+                    "Re": st.column_config.NumberColumn("Reynolds", format="%.0f"),
+                    "f": st.column_config.NumberColumn("f (Colebrook)", format="%.4f"),
                     "Pérdida (mca)": st.column_config.NumberColumn("Pérdida (mca)", format="%.4f"),
                 }
             )
