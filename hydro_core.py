@@ -692,9 +692,15 @@ def ajustar_cotas_relativas(red):
 
 # ==================== GENERACIÓN DE GRÁFICO 3D ====================
 def generate_3d_plot(red, presion_entrada=15.0):
-    """Genera gráfico 3D completo con Plotly"""
+    """
+    Genera el gráfico 3D completo con Plotly.
+    Versión mejorada con leyenda más clara y símbolos descriptivos.
+    """
     fig = go.Figure()
     
+    # ============================================================
+    # 1. TUBERÍAS (con colores según velocidad)
+    # ============================================================
     diametros = [t.diametro_mm for t in red.tuberias.values() if t.diametro_mm > 0]
     if diametros:
         diam_min, diam_max = min(diametros), max(diametros)
@@ -735,7 +741,9 @@ def generate_3d_plot(red, presion_entrada=15.0):
             hoverinfo='text'
         ))
     
-    # Accesorios
+    # ============================================================
+    # 2. ACCESORIOS CON SÍMBOLOS MEJORADOS
+    # ============================================================
     tipos_accesorios = {}
     for acc in red.accesorios:
         if acc.nodo_id not in red.nodos:
@@ -744,11 +752,12 @@ def generate_3d_plot(red, presion_entrada=15.0):
             tipos_accesorios[acc.tipo] = []
         tipos_accesorios[acc.tipo].append(acc)
     
+    # Configuración de símbolos mejorada
     config_tipos = {
-        'Tee': {'simbolo': 'square', 'color': '#f39c12', 'nombre': '🔧 Tee'},
-        'Codo_90': {'simbolo': 'diamond', 'color': '#9b59b6', 'nombre': '🔀 Codo 90°'},
-        'Codo_45': {'simbolo': 'diamond', 'color': '#8e44ad', 'nombre': '🔄 Codo 45°'},
-        'Reduccion': {'simbolo': 'circle', 'color': '#e67e22', 'nombre': '📏 Reducción'},
+        'Tee': {'simbolo': 'T', 'color': '#f39c12', 'nombre': '🔧 Tee', 'size': 10},
+        'Codo_90': {'simbolo': 'L', 'color': '#9b59b6', 'nombre': '🔀 Codo 90°', 'size': 8},
+        'Codo_45': {'simbolo': 'V', 'color': '#8e44ad', 'nombre': '🔄 Codo 45°', 'size': 8},
+        'Reduccion': {'simbolo': 'O', 'color': '#e67e22', 'nombre': '📏 Reducción', 'size': 7},
     }
     
     for tipo, accesorios in tipos_accesorios.items():
@@ -762,8 +771,9 @@ def generate_3d_plot(red, presion_entrada=15.0):
                     'Esfera': 'Válvula Esfera'
                 }
                 nombre = f'🔧 {nombres_valvulas.get(nombre_valvula, nombre_valvula)}'
-                simbolo = 'diamond'
+                simbolo = 'D'  # Diamante para válvulas
                 color = '#e67e22'
+                size = 9
             else:
                 continue
         else:
@@ -771,6 +781,7 @@ def generate_3d_plot(red, presion_entrada=15.0):
             nombre = cfg['nombre']
             simbolo = cfg['simbolo']
             color = cfg['color']
+            size = cfg['size']
         
         xs = [red.nodos[acc.nodo_id].x for acc in accesorios]
         ys = [red.nodos[acc.nodo_id].y for acc in accesorios]
@@ -778,24 +789,37 @@ def generate_3d_plot(red, presion_entrada=15.0):
         
         hover_texts = []
         for acc in accesorios:
-            nodo = red.nodos[acc.nodo_id]
+            # Obtener diámetro del accesorio
+            diam = "N/A"
+            for t in red.tuberias.values():
+                if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
+                    diam = t.diametro_nominal_pulg
+                    break
             hover_texts.append(
                 f"<b>{nombre}</b><br>📍 Nodo {acc.nodo_id}<br>"
                 f"📐 Leq: {acc.longitud_equivalente_m:.2f} m<br>"
-                f"📉 Pérdida: {acc.perdida_mca:.4f} mca"
+                f"📉 Pérdida: {acc.perdida_mca:.4f} mca<br>"
+                f"📏 DN: {diam}"
             )
         
         fig.add_trace(go.Scatter3d(
             x=xs, y=ys, z=zs,
             mode='markers',
-            marker=dict(size=7, symbol=simbolo, color=color, line=dict(width=1, color='white')),
+            marker=dict(
+                size=size, 
+                symbol=simbolo, 
+                color=color, 
+                line=dict(width=1.5, color='white')
+            ),
             name=nombre,
             showlegend=True,
             hovertext=hover_texts,
             hoverinfo='text'
         ))
     
-    # Nodos
+    # ============================================================
+    # 3. NODOS CON LEYENDA MEJORADA
+    # ============================================================
     alcanzables = set()
     if red.nodo_entrada_id is not None:
         cola = deque([red.nodo_entrada_id])
@@ -814,19 +838,32 @@ def generate_3d_plot(red, presion_entrada=15.0):
                     cola.append(vecino)
     
     ug_acumulada = red.calcular_ug_acumulada(alcanzables=alcanzables)
-    tipo_ocupacion = TIPO_OCUPACION_ACTUAL
+    tipo_ocupacion = st.session_state.get('tipo_ocupacion', "Vivienda Unifamiliar")
     
-    xs, ys, zs, colores, textos = [], [], [], [], []
+    # --- CAPAS PARA NODOS CON LEYENDA MEJORADA ---
+    capas = {
+        'Entrada': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': []},
+        'Aparatos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': [], 'labels': []},
+        'Nodos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': []}
+    }
     
     for n in red.nodos.values():
-        xs.append(n.x)
-        ys.append(n.y)
-        zs.append(n.z)
-        colores.append(n.presion_mca if n.presion_mca is not None else 0)
+        presion_val = n.presion_mca if n.presion_mca is not None else 0
         
-        demanda_unitaria = 0
-        if n.tipo_aparato and n.tipo_aparato in UNIDADES_GASTO:
-            demanda_unitaria = UNIDADES_GASTO[n.tipo_aparato]["caudal_unitario"]
+        # Determinar a qué capa pertenece
+        if n.es_entrada:
+            grupo = 'Entrada'
+            simbolo, tamano = 'star', 12
+        elif n.tipo_aparato:
+            grupo = 'Aparatos'
+            simbolo, tamano = 'square', 9
+            # Guardar el nombre del aparato para la leyenda
+            capas[grupo]['labels'].append(f"{UNIDADES_GASTO.get(n.tipo_aparato, {}).get('icono', '📌')} {n.tipo_aparato}")
+        else:
+            grupo = 'Nodos'
+            simbolo, tamano = 'circle', 5
+        
+        demanda_unitaria = UNIDADES_GASTO[n.tipo_aparato]["caudal_unitario"] if n.tipo_aparato in UNIDADES_GASTO else 0
         
         if n.id in alcanzables:
             ug_nodo = ug_acumulada.get(n.id, 0)
@@ -835,51 +872,106 @@ def generate_3d_plot(red, presion_entrada=15.0):
         else:
             caudal_texto = "N/A (Aislado por válvula)"
         
-        z_rel = n.z
-        z_signo = '+' if z_rel > 0 else ''
-        
-        texto = f"<b>Nodo {n.id}</b><br>"
-        texto += f"📍 ({n.x:.2f}, {n.y:.2f}, {z_signo}{z_rel:.2f})<br>"
+        z_signo = '+' if n.z > 0 else ''
+        texto = f"<b>Nodo {n.id}</b><br>📍 ({n.x:.2f}, {n.y:.2f}, {z_signo}{n.z:.2f})<br>"
         
         if n.es_entrada:
             texto += "🚰 <b>ENTRADA (Cota 0)</b><br>"
-        
         if n.tipo_aparato:
             ug = UNIDADES_GASTO.get(n.tipo_aparato, {}).get("ug", 0)
             texto += f"📌 {n.tipo_aparato} (UG: {ug})<br>"
             texto += f"💧 Demanda unitaria: {demanda_unitaria:.2f} L/s<br>"
-        
         if n.valvula_tipo:
             estado_valvula = "CERRADA" if n.valvula_cerrada else f"Abierta al {n.valvula_apertura}%"
             texto += f"🔧 Válvula: {n.valvula_tipo} ({estado_valvula})<br>"
         
         texto += f"📊 Caudal Hunter en nodo: {caudal_texto}<br>"
         texto += f"💪 Presión: {n.presion_mca:.2f} mca" if n.presion_mca else "💪 Presión: N/A"
-        
         if n.presion_mca and n.presion_mca < PRESION_MIN_NORMA:
             texto += "\n⚠️ <b>PRESIÓN BAJA</b>"
         
-        textos.append(texto)
+        # Añadir a su respectiva capa
+        capas[grupo]['x'].append(n.x)
+        capas[grupo]['y'].append(n.y)
+        capas[grupo]['z'].append(n.z)
+        capas[grupo]['color'].append(presion_val)
+        capas[grupo]['size'].append(tamano)
+        capas[grupo]['symbol'].append(simbolo)
+        capas[grupo]['text'].append(texto)
     
-    fig.add_trace(go.Scatter3d(
-        x=xs, y=ys, z=zs,
-        mode='markers',
-        marker=dict(
-            size=8,
-            color=colores,
-            colorscale='RdYlGn',
-            colorbar=dict(title="Presión (mca)", x=0.85, len=0.5, thickness=15),
-            showscale=True,
-            line=dict(width=1, color='white'),
-            cmin=0,
-            cmax=presion_entrada
-        ),
-        text=textos,
-        hoverinfo='text',
-        name='Nodos',
-        showlegend=True
-    ))
+    # --- AÑADIR TRAZAS SEPARADAS ---
+    # 1. Entrada
+    if capas['Entrada']['x']:
+        fig.add_trace(go.Scatter3d(
+            x=capas['Entrada']['x'], y=capas['Entrada']['y'], z=capas['Entrada']['z'],
+            mode='markers',
+            marker=dict(
+                size=12, symbol='star', color='#e74c3c',
+                line=dict(width=2, color='white')
+            ),
+            text=capas['Entrada']['text'], hoverinfo='text',
+            name='🚰 Entrada', showlegend=True
+        ))
     
+    # 2. Aparatos (con nombres en la leyenda)
+    if capas['Aparatos']['x']:
+        # Crear una traza por cada tipo de aparato para mostrar en la leyenda
+        aparatos_unicos = {}
+        for i, n in enumerate(red.nodos.values()):
+            if n.tipo_aparato and n.tipo_aparato not in aparatos_unicos:
+                aparatos_unicos[n.tipo_aparato] = {
+                    'x': [], 'y': [], 'z': [], 'text': [], 'color': []
+                }
+        
+        for n in red.nodos.values():
+            if n.tipo_aparato and n.tipo_aparato in aparatos_unicos:
+                aparatos_unicos[n.tipo_aparato]['x'].append(n.x)
+                aparatos_unicos[n.tipo_aparato]['y'].append(n.y)
+                aparatos_unicos[n.tipo_aparato]['z'].append(n.z)
+                aparatos_unicos[n.tipo_aparato]['text'].append(
+                    f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}<br>💪 Presión: {n.presion_mca:.2f} mca" if n.presion_mca else f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}"
+                )
+                aparatos_unicos[n.tipo_aparato]['color'].append(n.presion_mca if n.presion_mca else 0)
+        
+        for aparato, data in aparatos_unicos.items():
+            if data['x']:
+                icono = UNIDADES_GASTO.get(aparato, {}).get('icono', '📌')
+                fig.add_trace(go.Scatter3d(
+                    x=data['x'], y=data['y'], z=data['z'],
+                    mode='markers',
+                    marker=dict(
+                        size=9, symbol='square',
+                        color=data['color'],
+                        colorscale='RdYlGn',
+                        showscale=False,
+                        line=dict(width=1.5, color='white'),
+                        cmin=0, cmax=presion_entrada
+                    ),
+                    text=data['text'], hoverinfo='text',
+                    name=f"{icono} {aparato}", showlegend=True
+                ))
+    
+    # 3. Nodos de paso (sin aparatos ni entrada)
+    if capas['Nodos']['x']:
+        fig.add_trace(go.Scatter3d(
+            x=capas['Nodos']['x'], y=capas['Nodos']['y'], z=capas['Nodos']['z'],
+            mode='markers',
+            marker=dict(
+                size=5, symbol='circle',
+                color=capas['Nodos']['color'],
+                colorscale='RdYlGn',
+                showscale=True,
+                colorbar=dict(title="Presión (mca)", x=0.85, len=0.5, thickness=15),
+                line=dict(width=1, color='white'),
+                cmin=0, cmax=presion_entrada
+            ),
+            text=capas['Nodos']['text'], hoverinfo='text',
+            name='⚪ Nodos de Paso', showlegend=True
+        ))
+    
+    # ============================================================
+    # 4. CONFIGURACIÓN DEL GRÁFICO
+    # ============================================================
     fig.update_layout(
         title=dict(
             text="💧 Hydro Domus Py - Resultados del Análisis Hidráulico<br>"
@@ -900,7 +992,8 @@ def generate_3d_plot(red, presion_entrada=15.0):
         legend=dict(
             x=0.02,
             y=0.98,
-            traceorder='normal'
+            traceorder='normal',
+            font=dict(size=10)
         ),
         margin=dict(l=0, r=20, t=70, b=0),
         hoverlabel=dict(bgcolor='white', font_size=11)
