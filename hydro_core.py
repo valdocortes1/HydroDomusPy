@@ -694,12 +694,7 @@ def ajustar_cotas_relativas(red):
 def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifamiliar"):
     """
     Genera el gráfico 3D completo con Plotly.
-    Versión mejorada con leyenda más clara y símbolos descriptivos.
-    
-    Parámetros:
-    - red: Red hidráulica
-    - presion_entrada: Presión en el nodo de entrada (mca)
-    - tipo_ocupacion: Tipo de edificación para el cálculo de caudales
+    Versión mejorada con colores por aparato y etiquetas de nodos.
     """
     fig = go.Figure()
     
@@ -747,7 +742,7 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
         ))
     
     # ============================================================
-    # 2. ACCESORIOS CON SÍMBOLOS VÁLIDOS DE PLOTLY
+    # 2. ACCESORIOS
     # ============================================================
     tipos_accesorios = {}
     for acc in red.accesorios:
@@ -821,7 +816,7 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
         ))
     
     # ============================================================
-    # 3. NODOS CON LEYENDA MEJORADA
+    # 3. NODOS CON LEYENDA MEJORADA Y ETIQUETAS
     # ============================================================
     alcanzables = set()
     if red.nodo_entrada_id is not None:
@@ -842,11 +837,24 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
     
     ug_acumulada = red.calcular_ug_acumulada(alcanzables=alcanzables)
     
+    # --- PALETA DE COLORES PARA APARATOS ---
+    colores_aparatos = {
+        'LAVAMANOS': '#3498db',
+        'LAVADERO': '#2ecc71',
+        'SANITARIO': '#e67e22',
+        'DUCHA': '#1abc9c',
+        'LAVADORA': '#9b59b6',
+        'TANQUE': '#f39c12',
+        'LAVAPLATOS': '#e74c3c',
+        'GRIFO_JARDIN': '#27ae60',
+    }
+    color_default = '#7f8c8d'
+    
     # --- CAPAS PARA NODOS ---
     capas = {
-        'Entrada': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': []},
+        'Entrada': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': [], 'labels': []},
         'Aparatos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': [], 'labels': []},
-        'Nodos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': []}
+        'Nodos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': [], 'labels': []}
     }
     
     for n in red.nodos.values():
@@ -855,13 +863,18 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
         if n.es_entrada:
             grupo = 'Entrada'
             simbolo, tamano = 'diamond', 12
+            color_marker = '#e74c3c'
+            label = '🚰 ENTRADA'
         elif n.tipo_aparato:
             grupo = 'Aparatos'
             simbolo, tamano = 'square', 9
-            capas[grupo]['labels'].append(f"{UNIDADES_GASTO.get(n.tipo_aparato, {}).get('icono', '📌')} {n.tipo_aparato}")
+            color_marker = colores_aparatos.get(n.tipo_aparato, color_default)
+            label = f"{UNIDADES_GASTO.get(n.tipo_aparato, {}).get('icono', '📌')} {n.tipo_aparato}"
         else:
             grupo = 'Nodos'
             simbolo, tamano = 'circle', 5
+            color_marker = '#95a5a6'
+            label = f'Nodo {n.id}'
         
         demanda_unitaria = UNIDADES_GASTO[n.tipo_aparato]["caudal_unitario"] if n.tipo_aparato in UNIDADES_GASTO else 0
         
@@ -893,31 +906,36 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
         capas[grupo]['x'].append(n.x)
         capas[grupo]['y'].append(n.y)
         capas[grupo]['z'].append(n.z)
-        capas[grupo]['color'].append(presion_val)
+        capas[grupo]['color'].append(color_marker)
         capas[grupo]['size'].append(tamano)
         capas[grupo]['symbol'].append(simbolo)
         capas[grupo]['text'].append(texto)
+        capas[grupo]['labels'].append(str(n.id))  # 👈 Número del nodo para etiqueta
     
     # --- AÑADIR TRAZAS SEPARADAS ---
     # 1. Entrada
     if capas['Entrada']['x']:
         fig.add_trace(go.Scatter3d(
             x=capas['Entrada']['x'], y=capas['Entrada']['y'], z=capas['Entrada']['z'],
-            mode='markers',
+            mode='markers+text',
             marker=dict(
                 size=12, symbol='diamond', color='#e74c3c',
                 line=dict(width=2, color='white')
             ),
-            text=capas['Entrada']['text'], hoverinfo='text',
+            text=capas['Entrada']['labels'],
+            textposition='top center',
+            textfont=dict(size=10, color='#ffffff'),
+            text=capas['Entrada']['labels'],  # 👈 Mostrar número del nodo
+            hovertext=capas['Entrada']['text'], hoverinfo='text',
             name='🚰 Entrada', showlegend=True
         ))
     
-    # 2. Aparatos (con nombres en la leyenda)
+    # 2. Aparatos (con colores diferentes por tipo)
     aparatos_unicos = {}
     for n in red.nodos.values():
         if n.tipo_aparato and n.tipo_aparato not in aparatos_unicos:
             aparatos_unicos[n.tipo_aparato] = {
-                'x': [], 'y': [], 'z': [], 'text': [], 'color': []
+                'x': [], 'y': [], 'z': [], 'text': [], 'labels': [], 'color': []
             }
     
     for n in red.nodos.values():
@@ -925,26 +943,29 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
             aparatos_unicos[n.tipo_aparato]['x'].append(n.x)
             aparatos_unicos[n.tipo_aparato]['y'].append(n.y)
             aparatos_unicos[n.tipo_aparato]['z'].append(n.z)
+            aparatos_unicos[n.tipo_aparato]['labels'].append(str(n.id))
             aparatos_unicos[n.tipo_aparato]['text'].append(
                 f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}<br>💪 Presión: {n.presion_mca:.2f} mca" if n.presion_mca else f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}"
             )
-            aparatos_unicos[n.tipo_aparato]['color'].append(n.presion_mca if n.presion_mca else 0)
+            aparatos_unicos[n.tipo_aparato]['color'].append(
+                colores_aparatos.get(n.tipo_aparato, color_default)
+            )
     
     for aparato, data in aparatos_unicos.items():
         if data['x']:
             icono = UNIDADES_GASTO.get(aparato, {}).get('icono', '📌')
             fig.add_trace(go.Scatter3d(
                 x=data['x'], y=data['y'], z=data['z'],
-                mode='markers',
+                mode='markers+text',
                 marker=dict(
                     size=9, symbol='square',
                     color=data['color'],
-                    colorscale='RdYlGn',
-                    showscale=False,
-                    line=dict(width=1.5, color='white'),
-                    cmin=0, cmax=presion_entrada
+                    line=dict(width=1.5, color='white')
                 ),
-                text=data['text'], hoverinfo='text',
+                text=data['labels'],  # 👈 Mostrar número del nodo
+                textposition='top center',
+                textfont=dict(size=9, color='#ffffff'),
+                hovertext=data['text'], hoverinfo='text',
                 name=f"{icono} {aparato}", showlegend=True
             ))
     
@@ -952,17 +973,16 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
     if capas['Nodos']['x']:
         fig.add_trace(go.Scatter3d(
             x=capas['Nodos']['x'], y=capas['Nodos']['y'], z=capas['Nodos']['z'],
-            mode='markers',
+            mode='markers+text',
             marker=dict(
                 size=5, symbol='circle',
                 color=capas['Nodos']['color'],
-                colorscale='RdYlGn',
-                showscale=True,
-                colorbar=dict(title="Presión (mca)", x=0.85, len=0.5, thickness=15),
-                line=dict(width=1, color='white'),
-                cmin=0, cmax=presion_entrada
+                line=dict(width=1, color='white')
             ),
-            text=capas['Nodos']['text'], hoverinfo='text',
+            text=capas['Nodos']['labels'],  # 👈 Mostrar número del nodo
+            textposition='top center',
+            textfont=dict(size=8, color='#aaaaaa'),
+            hovertext=capas['Nodos']['text'], hoverinfo='text',
             name='⚪ Nodos de Paso', showlegend=True
         ))
     
