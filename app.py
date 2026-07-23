@@ -856,7 +856,7 @@ with st.sidebar:
     
     # Detectar tema actual
     tema_actual = st.get_option("theme.base")
-    is_dark = tema_actual
+    is_dark = tema_actual == "dark"
     
     # Colores según tema
     if is_dark:
