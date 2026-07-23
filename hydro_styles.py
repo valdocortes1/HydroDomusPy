@@ -10,10 +10,15 @@ import streamlit as st
 def apply_enhanced_styles():
     """
     Aplica estilos CSS mejorados con adaptación automática a modo oscuro/claro.
-    Proporciona contraste óptimo y diseño profesional.
+    Prioriza el tema seleccionado por el usuario en session_state.
     """
-    theme = st.get_option("theme.base")
-    is_dark = theme == "dark"
+    # Intentar obtener el tema de session_state, si no, del sistema
+    if 'tema' in st.session_state:
+        is_dark = st.session_state.tema == "dark"
+    else:
+        # Fallback al tema del sistema
+        theme = st.get_option("theme.base")
+        is_dark = theme == "dark"
     
     # Paleta de colores según tema
     if is_dark:
