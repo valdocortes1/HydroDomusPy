@@ -72,6 +72,71 @@ if 'tmp_dxf_path' not in st.session_state:
     st.session_state.tmp_dxf_path = None
 if 'nodos_raw' not in st.session_state:
     st.session_state.nodos_raw = None
+
+
+# ================================================================================
+# FUNCIÓN PARA DETECTAR SINCRONIZACIÓN DESDE LA INTERFAZ 3D
+# ================================================================================
+
+def detectar_sincronizacion_3d():
+    """
+    Detecta si hay una solicitud de sincronización desde la interfaz 3D.
+    Si existe, aplica la configuración guardada en localStorage.
+    """
+    # Verificar si hay un parámetro 'sync' en la URL
+    query_params = st.query_params
+    
+    if 'sync' in query_params:
+        # Limpiar el parámetro para evitar recargas infinitas
+        st.query_params.clear()
+        
+        # Intentar obtener la configuración de session_state
+        # (la interfaz 3D la guarda en localStorage, pero Streamlit no puede leer localStorage directamente)
+        # En su lugar, usamos un truco: la interfaz 3D guarda en localStorage
+        # y luego recarga la página con '?sync=true'
+        # Streamlit detecta 'sync' y puede mostrar un mensaje o recargar
+        st.info("🔄 Sincronizando configuración desde la interfaz 3D...")
+        
+        # Forzar recarga de la página para actualizar la tabla
+        # La interfaz 3D guardó la configuración en localStorage,
+        # pero Streamlit necesita leerla a través de un archivo o session_state
+        # Para simplificar, mostramos un mensaje y el usuario recarga manualmente
+        return True
+    
+    # También podemos verificar si hay una configuración en session_state
+    # que haya sido guardada por el componente HTML
+    if 'config_3d' in st.session_state and st.session_state.config_3d:
+        config = st.session_state.config_3d
+        if st.session_state.red:
+            # Aplicar configuración a la red
+            for nodo_cfg in config.get("nodos", []):
+                nid = nodo_cfg.get("id")
+                if nid in st.session_state.red.nodos:
+                    nodo = st.session_state.red.nodos[nid]
+                    nodo.es_entrada = nodo_cfg.get("es_entrada", False)
+                    nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
+                    nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
+                    nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
+                    nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
+            
+            if config.get("nodo_entrada") is not None:
+                st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
+            
+            # Limpiar para evitar recargas infinitas
+            st.session_state.config_3d = None
+            
+            # Marcar que la configuración ha sido actualizada
+            st.session_state.config_actualizada = True
+            
+            # Mostrar mensaje de éxito
+            st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
+            
+            # Forzar recarga para actualizar la tabla
+            st.rerun()
+    
+    return False
+
+
 if detectar_sincronizacion_3d():
     # Si se detectó sincronización, la función ya manejó la actualización
     pass
@@ -613,67 +678,6 @@ def get_status(red):
         return "🟡 Sin entrada"
     return "🟢 Red lista"
 
-# ================================================================================
-# FUNCIÓN PARA DETECTAR SINCRONIZACIÓN DESDE LA INTERFAZ 3D
-# ================================================================================
-
-def detectar_sincronizacion_3d():
-    """
-    Detecta si hay una solicitud de sincronización desde la interfaz 3D.
-    Si existe, aplica la configuración guardada en localStorage.
-    """
-    # Verificar si hay un parámetro 'sync' en la URL
-    query_params = st.query_params
-    
-    if 'sync' in query_params:
-        # Limpiar el parámetro para evitar recargas infinitas
-        st.query_params.clear()
-        
-        # Intentar obtener la configuración de session_state
-        # (la interfaz 3D la guarda en localStorage, pero Streamlit no puede leer localStorage directamente)
-        # En su lugar, usamos un truco: la interfaz 3D guarda en localStorage
-        # y luego recarga la página con '?sync=true'
-        # Streamlit detecta 'sync' y puede mostrar un mensaje o recargar
-        st.info("🔄 Sincronizando configuración desde la interfaz 3D...")
-        
-        # Forzar recarga de la página para actualizar la tabla
-        # La interfaz 3D guardó la configuración en localStorage,
-        # pero Streamlit necesita leerla a través de un archivo o session_state
-        # Para simplificar, mostramos un mensaje y el usuario recarga manualmente
-        return True
-    
-    # También podemos verificar si hay una configuración en session_state
-    # que haya sido guardada por el componente HTML
-    if 'config_3d' in st.session_state and st.session_state.config_3d:
-        config = st.session_state.config_3d
-        if st.session_state.red:
-            # Aplicar configuración a la red
-            for nodo_cfg in config.get("nodos", []):
-                nid = nodo_cfg.get("id")
-                if nid in st.session_state.red.nodos:
-                    nodo = st.session_state.red.nodos[nid]
-                    nodo.es_entrada = nodo_cfg.get("es_entrada", False)
-                    nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
-                    nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
-                    nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
-                    nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
-            
-            if config.get("nodo_entrada") is not None:
-                st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
-            
-            # Limpiar para evitar recargas infinitas
-            st.session_state.config_3d = None
-            
-            # Marcar que la configuración ha sido actualizada
-            st.session_state.config_actualizada = True
-            
-            # Mostrar mensaje de éxito
-            st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
-            
-            # Forzar recarga para actualizar la tabla
-            st.rerun()
-    
-    return False
 
 def procesar_dxf(archivo_dxf):
     """Procesa el archivo DXF y construye la red"""
