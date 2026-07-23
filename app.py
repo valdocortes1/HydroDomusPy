@@ -1282,8 +1282,8 @@ if st.session_state.red is not None:
                 }
             )
         
-        # ===== PESTAÑA 4: TUBERÍAS =====#
-        
+          
+        # ===== PESTAÑA 4: TUBERÍAS =====
         with tab4:
             st.subheader("📏 Datos de Tuberías")
             
@@ -1299,6 +1299,17 @@ if st.session_state.red is not None:
                 else:
                     Re = None
                 
+                # Determinar régimen de flujo
+                if Re is not None:
+                    if Re < 2000:
+                        regimen = "🟢 Laminar"
+                    elif Re < 4000:
+                        regimen = "🟡 Transición"
+                    else:
+                        regimen = "🔴 Turbulento"
+                else:
+                    regimen = "⚪ N/A"
+                
                 # Factor de fricción
                 f = t.f_friccion if hasattr(t, 'f_friccion') and t.f_friccion else 0.02
                 
@@ -1312,6 +1323,7 @@ if st.session_state.red is not None:
                     "Caudal (L/s)": round(t.caudal_lps, 3),
                     "Vel (m/s)": round(t.velocidad_ms, 2),
                     "Re": round(Re, 0) if Re is not None else None,
+                    "Régimen": regimen,
                     "f": round(f, 4) if f else None,
                     "Pérdida (mca)": round(t.perdida_mca, 4)
                 })
@@ -1326,11 +1338,20 @@ if st.session_state.red is not None:
                     "DI (mm)": st.column_config.NumberColumn("DI (mm)", format="%.2f"),
                     "Caudal (L/s)": st.column_config.NumberColumn("Caudal (L/s)", format="%.3f"),
                     "Vel (m/s)": st.column_config.NumberColumn("Vel (m/s)", format="%.2f"),
-                    "Re": st.column_config.NumberColumn("Reynolds", format="%.0f"),
-                    "f": st.column_config.NumberColumn("f (Colebrook)", format="%.4f"),
+                    "Re": st.column_config.NumberColumn("Número de Reynolds", format="%.0f"),
+                    "Régimen": st.column_config.Column("Régimen"),
+                    "f": st.column_config.NumberColumn("Factor de Fricción (f)", format="%.4f"),
                     "Pérdida (mca)": st.column_config.NumberColumn("Pérdida (mca)", format="%.4f"),
                 }
             )
+            
+            # Mostrar leyenda de regímenes
+            st.caption("""
+            **Leyenda de regímenes de flujo:**
+            - 🟢 **Laminar** (Re < 2000): Flujo suave y ordenado
+            - 🟡 **Transición** (2000 ≤ Re < 4000): Zona de transición
+            - 🔴 **Turbulento** (Re ≥ 4000): Flujo caótico con mezcla
+            """)
         
         # ===== PESTAÑA 5: ACCESORIOS =====
         with tab5:
