@@ -691,10 +691,15 @@ def ajustar_cotas_relativas(red):
         nodo.z = nodo.z - z_entrada
 
 # ==================== GENERACIÓN DE GRÁFICO 3D ====================
-def generate_3d_plot(red, presion_entrada=15.0):
+def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifamiliar"):
     """
     Genera el gráfico 3D completo con Plotly.
     Versión mejorada con leyenda más clara y símbolos descriptivos.
+    
+    Parámetros:
+    - red: Red hidráulica
+    - presion_entrada: Presión en el nodo de entrada (mca)
+    - tipo_ocupacion: Tipo de edificación para el cálculo de caudales
     """
     fig = go.Figure()
     
@@ -752,7 +757,6 @@ def generate_3d_plot(red, presion_entrada=15.0):
             tipos_accesorios[acc.tipo] = []
         tipos_accesorios[acc.tipo].append(acc)
     
-    # Configuración de símbolos con valores válidos de Plotly
     config_tipos = {
         'Tee': {'simbolo': 'cross', 'color': '#f39c12', 'nombre': '🔧 Tee', 'size': 10},
         'Codo_90': {'simbolo': 'square', 'color': '#9b59b6', 'nombre': '🔀 Codo 90°', 'size': 8},
@@ -837,7 +841,6 @@ def generate_3d_plot(red, presion_entrada=15.0):
                     cola.append(vecino)
     
     ug_acumulada = red.calcular_ug_acumulada(alcanzables=alcanzables)
-    tipo_ocupacion = st.session_state.get('tipo_ocupacion', "Vivienda Unifamiliar")
     
     # --- CAPAS PARA NODOS ---
     capas = {
