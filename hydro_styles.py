@@ -500,3 +500,15 @@ def apply_enhanced_styles():
         }}
     </style>
     """, unsafe_allow_html=True)
+
+# hydro_styles.py - Al final del archivo
+
+def force_style_reload():
+    """
+    Función auxiliar para forzar la recarga de estilos.
+    Útil cuando los cambios no se reflejan inmediatamente.
+    """
+    # Limpiar el caché de estilos si existe
+    if 'style_applied' in st.session_state:
+        del st.session_state.style_applied
+    apply_enhanced_styles()
