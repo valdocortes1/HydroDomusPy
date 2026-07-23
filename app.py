@@ -19,6 +19,7 @@ import tempfile
 import os
 import json
 import base64
+import io
 from datetime import datetime
 from collections import deque
 from dataclasses import dataclass
@@ -148,6 +149,17 @@ TIPOS_OCUPACION_AGUA = {
         "coeficiente_b": 0.40,
         "color": "#fd79a8"
     }
+}
+
+# ================================================================================
+# UNIDADES DE DIBUJO
+# ================================================================================
+UNIDADES_DIBUJO = {
+    "mm": {"nombre": "Milímetros", "factor": 1000, "icono": "📏"},
+    "cm": {"nombre": "Centímetros", "factor": 100, "icono": "📐"},
+    "m": {"nombre": "Metros", "factor": 1, "icono": "📏"},
+    "in": {"nombre": "Pulgadas", "factor": 0.0254, "icono": "📐"},
+    "ft": {"nombre": "Pies", "factor": 0.3048, "icono": "📏"},
 }
 
 # ================================================================================
@@ -400,7 +412,6 @@ class HydraulicAnalyzer:
         self.diametro_maximo = diametro_maximo
         self.callback = callback_progreso
         
-        # Obtener valores de session_state
         self.vel_min = st.session_state.get('vel_min', 0.5)
         self.vel_max = st.session_state.get('vel_max', 2.0)
         self.presion_entrada = st.session_state.get('presion_entrada', 15.0)
@@ -696,6 +707,7 @@ class DXFReader:
         return lineas
 
 def normalizar_coordenadas(lineas, factor_conversion=1000):
+    """Normaliza coordenadas al sistema de metros"""
     if not lineas:
         return lineas
     
@@ -720,6 +732,7 @@ def normalizar_coordenadas(lineas, factor_conversion=1000):
     return lineas_norm
 
 def construir_red(lineas):
+    """Construye la red a partir de las líneas normalizadas"""
     nodos_dict = {}
     tuberias = []
     next_id_nodo, next_id_tubo = 0, 0
@@ -1614,6 +1627,10 @@ def main():
         st.session_state.tmp_dxf_path = None
     if 'dxf_reader' not in st.session_state:
         st.session_state.dxf_reader = None
+    if 'unidad_dibujo' not in st.session_state:
+        st.session_state.unidad_dibujo = "mm"
+    if 'factor_conversion' not in st.session_state:
+        st.session_state.factor_conversion = 1000
 
     # ============================================================
     # SIDEBAR - CONTROLES
@@ -1627,13 +1644,28 @@ def main():
         # ===== CARGA DE DXF =====
         st.subheader("📁 Cargar DXF")
         
-        # 👇 EL FILE_UPLOADER ESTÁ AQUÍ
         dxf_file = st.file_uploader(
             "Seleccionar archivo DXF",
             type=['dxf'],
             help="Cargue el plano hidrosanitario en formato DXF",
             key="dxf_uploader_main"
         )
+        
+        # ===== SELECCIÓN DE UNIDADES =====
+        st.subheader("📐 Unidades del Dibujo")
+        
+        unidad_seleccionada = st.selectbox(
+            "¿En qué unidades está dibujado el archivo DXF?",
+            options=list(UNIDADES_DIBUJO.keys()),
+            format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']} ({x})",
+            key="unidad_select_main",
+            help="Seleccione las unidades en las que fue dibujado el plano"
+        )
+        
+        st.session_state.unidad_dibujo = unidad_seleccionada
+        st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
+        
+        st.caption(f"📌 Factor de conversión: 1 unidad = {1/st.session_state.factor_conversion:.6f} m")
         
         # Procesar el archivo si se ha cargado
         if dxf_file is not None:
@@ -1668,7 +1700,9 @@ def main():
                         with st.spinner("Construyendo red a partir del DXF..."):
                             lineas_raw = reader.extraer_lineas(selected)
                             if lineas_raw:
-                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=1000)
+                                # Usar el factor de conversión seleccionado
+                                factor = st.session_state.factor_conversion
+                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
                                 nodos_dict, tuberias = construir_red(lineas)
                                 
                                 red = RedHidraulica()
@@ -1865,10 +1899,11 @@ def main():
             **Pasos para realizar un análisis:**
             
             1. 📁 **Cargar archivo DXF** del plano hidrosanitario
-            2. 📐 **Seleccionar los layers** que contienen las tuberías
-            3. 🔧 **Configurar nodos** (entrada, aparatos, válvulas)
-            4. ⚙️ **Ajustar parámetros** de cálculo
-            5. 🚀 **Ejecutar análisis** y revisar resultados
+            2. 📐 **Seleccionar las unidades** del dibujo (mm, cm, m, in, ft)
+            3. 📐 **Seleccionar los layers** que contienen las tuberías
+            4. 🔧 **Configurar nodos** (entrada, aparatos, válvulas)
+            5. ⚙️ **Ajustar parámetros** de cálculo
+            6. 🚀 **Ejecutar análisis** y revisar resultados
             
             **Basado en:**
             - NTC 1500 (Colombia)
@@ -2001,7 +2036,8 @@ def main():
                                 for n in red.nodos.values()
                             ],
                             "tipo_ocupacion": st.session_state.tipo_ocupacion,
-                            "presion_entrada": st.session_state.presion_entrada
+                            "presion_entrada": st.session_state.presion_entrada,
+                            "unidad_dibujo": st.session_state.unidad_dibujo
                         }
                         config_json = json.dumps(config, indent=2, ensure_ascii=False)
                         b64 = base64.b64encode(config_json.encode()).decode()
