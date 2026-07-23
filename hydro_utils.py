@@ -17,7 +17,7 @@ from openpyxl.utils import get_column_letter
 
 from hydro_core import (
     UNIDADES_GASTO, DIAMETROS_PAVCO, diametro_a_numero,
-    PRESION_MIN_NORMA
+    PRESION_MIN_NORMA, ajustar_cotas_relativas
 )
 
 # ================================================================================
@@ -59,7 +59,6 @@ def cargar_y_aplicar_configuracion(red, config_data):
                     red.nodo_entrada_id = nid
         
         # Ajustar cotas relativas
-        from hydro_core import ajustar_cotas_relativas
         ajustar_cotas_relativas(red)
         
         return True
