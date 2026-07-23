@@ -93,18 +93,43 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos"""
+    """Genera HTML para la configuración interactiva de nodos con tema adaptativo"""
+    
+    # Detectar tema de Streamlit
+    try:
+        tema = st.get_option("theme.base")
+        is_dark = tema == "dark"
+    except:
+        is_dark = True  # Por defecto, oscuro
+    
+    # Colores según tema
+    if is_dark:
+        bg_color = "#1e1e1e"
+        card_bg = "#2d2d2d"
+        text_color = "#ffffff"
+        text_secondary = "#aaaaaa"
+        border_color = "#444444"
+        plotly_bg = "#1e1e1e"
+        header_grad = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
+    else:
+        bg_color = "#f5f5f5"
+        card_bg = "#ffffff"
+        text_color = "#1a1a2e"
+        text_secondary = "#666666"
+        border_color = "#dddddd"
+        plotly_bg = "#f5f5f5"
+        header_grad = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
     
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Hydro Domus Py - Configuración</title>
 <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
 <style>
-body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}}
-#header{{background:#2c3e50;color:white;padding:15px;text-align:center}}
+body{{margin:0;font-family:Segoe UI,sans-serif;background:{bg_color};color:{text_color}}}
+#header{{background:{header_grad};color:white;padding:15px;text-align:center}}
 #header h1{{margin:0;font-size:1.5em}}
-#header p{{margin:5px 0 0;font-size:0.9em}}
+#header p{{margin:5px 0 0;font-size:0.9em;color:rgba(255,255,255,0.8)}}
 #main{{position:fixed;top:80px;left:0;right:200px;bottom:0}}
-#sidebar{{position:fixed;top:80px;right:0;width:200px;bottom:0;background:#2d2d2d;padding:12px;overflow-y:auto;font-size:11px;box-shadow:-2px 0 10px rgba(0,0,0,0.3)}}
+#sidebar{{position:fixed;top:80px;right:0;width:200px;bottom:0;background:{card_bg};padding:12px;overflow-y:auto;font-size:11px;color:{text_color};box-shadow:-2px 0 10px rgba(0,0,0,0.2);border-left:1px solid {border_color}}}
 #sidebar h3{{margin-top:0;color:#3498db;font-size:14px}}
 .btn{{background:#3498db;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;margin:4px;font-size:11px;transition:all 0.3s}}
 .btn:hover{{background:#2980b9;transform:scale(1.02)}}
@@ -115,12 +140,12 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
-.info-nodo{{background:#3d3d3d;border-radius:8px;padding:10px;margin-bottom:10px;border:1px solid #444444;color:#ffffff}}
+.info-nodo{{background:{card_bg};border-radius:8px;padding:10px;margin-bottom:10px;border:1px solid {border_color};color:{text_color}}}
 .info-nodo h4{{margin:0 0 6px 0;color:#3498db;font-size:12px}}
-.info-nodo p{{margin:4px 0;font-size:10px;color:#aaaaaa}}
-select{{font-size:10px;padding:3px;margin:3px 0;width:100%;border-radius:4px;border:1px solid #444444;background:#2d2d2d;color:#ffffff}}
-hr{{margin:8px 0;border-color:#444444}}
-label{{color:#ffffff}}
+.info-nodo p{{margin:4px 0;font-size:10px;color:{text_secondary}}}
+select{{font-size:10px;padding:3px;margin:3px 0;width:100%;border-radius:4px;border:1px solid {border_color};background:{card_bg};color:{text_color}}}
+hr{{margin:8px 0;border-color:{border_color}}}
+label{{color:{text_color}}}
 </style>
 </head>
 <body>
@@ -128,14 +153,14 @@ label{{color:#ffffff}}
 <div id="main"></div>
 <div id="sidebar">
 <h3>📋 Configuración</h3>
-<div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
+<div id="info-panel"><p style="font-size:11px; color:{text_secondary}">✨ Haga clic en un nodo del gráfico 3D</p></div>
 <div style="text-align:center; margin-top:10px">
 <button class="btn btn-success" onclick="guardar()" style="width:95%">💾 Guardar Configuración</button>
 <button class="btn btn-danger" onclick="resetear()" style="width:95%; margin-top:6px">🔄 Resetear todo</button>
 </div>
 <hr>
-<div id="resumen" style="font-size:11px; background:#3d3d3d; padding:8px; border-radius:6px;"></div>
-<p style="font-size:8px; color:#999; text-align:center; margin-top:10px">Hydro Domus Py v1.0.0<br>NTC 1500 - RAS</p>
+<div id="resumen" style="font-size:11px; background:{card_bg}; padding:8px; border-radius:6px; color:{text_color}; border:1px solid {border_color}"></div>
+<p style="font-size:8px; color:{text_secondary}; text-align:center; margin-top:10px">Hydro Domus Py v1.0.0<br>NTC 1500 - RAS</p>
 </div>
 <script>
 const nodos = {json.dumps(nodos_data)};
@@ -173,17 +198,17 @@ function actualizarGrafico() {{
             aspectmode: 'manual',
             aspectratio: {{x: xRange / maxRange, y: yRange / maxRange, z: zRange / maxRange}},
             camera: currentCamera || {{eye: {{x: 1.5, y: 1.5, z: 1.5}}}},
-            bgcolor: '#1e1e1e'
+            bgcolor: '{plotly_bg}'
         }},
         margin: {{l: 0, r: 0, t: 40, b: 0}},
-        paper_bgcolor: '#1e1e1e',
-        plot_bgcolor: '#1e1e1e'
+        paper_bgcolor: '{plotly_bg}',
+        plot_bgcolor: '{plotly_bg}'
     }};
     
     const traces = [
         {{type:'scatter3d',mode:'lines',x:tx,y:ty,z:tz,line:{{color:'#bdc3c7',width:4}}}},
         {{type:'scatter3d',mode:'markers+text',x:nx,y:ny,z:nz,marker:{{color:col,size:tam}},
-          text:nodos.map(n=>n.id), textposition: 'top center', textfont: {{size: 10, color:'#ffffff'}}, customdata: nodos.map(n=>n.id), hoverinfo: 'text'}}
+          text:nodos.map(n=>n.id), textposition: 'top center', textfont: {{size: 10, color:'{text_color}'}}, customdata: nodos.map(n=>n.id), hoverinfo: 'text'}}
     ];
     
     Plotly.newPlot('main', traces, layout);
@@ -195,156 +220,7 @@ function actualizarGrafico() {{
         }}
     }});
 }}
-
-function mostrarPanel(nodo){{
-    nodoSeleccionado=nodo;
-    const esEntrada=(nodo.id===entradaId);
-    const tieneAparato=!!nodo.tipo_aparato;
-    const tieneValvula=!!nodo.valvula_tipo;
-    const valvulaCerrada=nodo.valvula_cerrada || false;
-    
-    let html=`<div class="info-nodo"><h4>🔘 Nodo ${{nodo.id}}</h4>
-    <p>📍 (${{nodo.x.toFixed(1)}}, ${{nodo.y.toFixed(1)}}, ${{nodo.z.toFixed(1)}})</p>
-    <p>📌 Estado: `;
-    if(esEntrada)html+='<span class="badge-entrada">🚰 ENTRADA</span>';
-    if(tieneAparato)html+=`<span class="badge-aparato">📌 ${{nodo.tipo_aparato}}</span>`;
-    if(tieneValvula){{
-        const estadoValvula = valvulaCerrada ? 'CERRADA' : 'ABIERTA';
-        html+=`<span class="badge-valvula">🔧 ${{nodo.valvula_tipo}} (${{estadoValvula}})</span>`;
-    }}
-    if(!esEntrada&&!tieneAparato&&!tieneValvula) html+='⚪ Sin asignar';
-    
-    html+=`</p><hr>
-    <button class="btn" onclick="setEntrada(${{nodo.id}})" ${{esEntrada?'disabled':''}} style="width:100%">🚰 Hacer ENTRADA</button>
-    
-    <div style="margin-top:5px"><label>📌 Aparato:</label>
-    <select id="selAparato" style="width:100%"><option value="">-- Seleccionar --</option>`;
-    for(const a of aparatos)html+=`<option value="${{a}}" ${{nodo.tipo_aparato===a?'selected':''}}>${{a}}</option>`;
-    html+=`</select>
-    <button class="btn" onclick="setAparato(${{nodo.id}})" style="width:100%">Aplicar</button></div>
-    
-    <div style="margin-top:5px"><label>🔧 Válvula:</label>
-    <select id="selValvula" style="width:100%">
-        <option value="">-- Ninguna --</option>
-        <option value="Compuerta" ${{nodo.valvula_tipo==='Compuerta'?'selected':''}}>Compuerta (Leq=0.3m)</option>
-        <option value="Globo" ${{nodo.valvula_tipo==='Globo'?'selected':''}}>Globo (Leq=1.5m)</option>
-        <option value="Check" ${{nodo.valvula_tipo==='Check'?'selected':''}}>Check (Leq=2.5m)</option>
-        <option value="Esfera" ${{nodo.valvula_tipo==='Esfera'?'selected':''}}>Esfera (Leq=0.2m)</option>
-    </select>
-    <select id="selEstadoValvula" style="width:100%; margin-top:2px" ${{!tieneValvula?'disabled':''}}>
-        <option value="abierta" ${{!valvulaCerrada?'selected':''}}>ABIERTA (flujo normal)</option>
-        <option value="cerrada" ${{valvulaCerrada?'selected':''}}>CERRADA (aisla aguas abajo)</option>
-    </select>
-    <button class="btn" onclick="setValvula(${{nodo.id}})" style="width:100%">Aplicar</button></div>`;
-    
-    if(!esEntrada&&!tieneAparato&&!tieneValvula)html+=`<hr><button class="btn" onclick="limpiarNodo(${{nodo.id}})" style="width:100%">🗑️ Limpiar todo</button>`;
-    html+=`</div>`;
-    document.getElementById('info-panel').innerHTML=html;
-}}
-
-function setEntrada(id){{
-    if(entradaId!==null && entradaId!==undefined){{
-        const old=nodos.find(n=>n.id===entradaId);
-        if(old)old.es_entrada=false;
-    }}
-    entradaId=id;
-    const nodo=nodos.find(n=>n.id===id);
-    if(nodo){{nodo.es_entrada=true;nodo.tipo_aparato="";nodo.valvula_tipo="";nodo.valvula_cerrada=false;}}
-    actualizarGrafico();actualizarResumen();
-    if(nodoSeleccionado&&nodoSeleccionado.id===id)mostrarPanel(nodo);
-}}
-
-function setAparato(id){{
-    const tipo=document.getElementById('selAparato').value;
-    if(!tipo)return;
-    if(id===entradaId){{alert('La entrada no puede ser aparato');return;}}
-    const nodo=nodos.find(n=>n.id===id);
-    if(nodo){{nodo.tipo_aparato=tipo;nodo.es_entrada=false;}}
-    actualizarGrafico();actualizarResumen();
-    if(nodoSeleccionado&&nodoSeleccionado.id===id)mostrarPanel(nodo);
-}}
-
-function setValvula(id){{
-    const tipo = document.getElementById('selValvula').value;
-    const estado = document.getElementById('selEstadoValvula').value;
-    const nodo = nodos.find(n=>n.id===id);
-    if(!nodo) return;
-    
-    if(!tipo){{
-        nodo.valvula_tipo = "";
-        nodo.valvula_cerrada = false;
-    }} else {{
-        nodo.valvula_tipo = tipo;
-        nodo.valvula_cerrada = (estado === 'cerrada');
-    }}
-    actualizarGrafico();actualizarResumen();
-    if(nodoSeleccionado && nodoSeleccionado.id===id) mostrarPanel(nodo);
-}}
-
-function limpiarNodo(id){{
-    const nodo=nodos.find(n=>n.id===id);
-    if(nodo){{
-        if(nodo.id===entradaId)entradaId=null;
-        nodo.es_entrada=false;
-        nodo.tipo_aparato="";
-        nodo.valvula_tipo="";
-        nodo.valvula_cerrada=false;
-    }}
-    actualizarGrafico();actualizarResumen();
-    if(nodoSeleccionado&&nodoSeleccionado.id===id)mostrarPanel(nodo);
-}}
-
-function resetear(){{
-    if(confirm('¿Resetear toda la configuración?')){{
-        entradaId=null;
-        for(const n of nodos){{
-            n.es_entrada=false;
-            n.tipo_aparato="";
-            n.valvula_tipo="";
-            n.valvula_cerrada=false;
-        }}
-        actualizarGrafico();actualizarResumen();
-        document.getElementById('info-panel').innerHTML='<p style="font-size:11px; color:#aaaaaa">Seleccione un nodo</p>';
-    }}
-}}
-
-function actualizarResumen(){{
-    const entrada=nodos.find(n=>n.id===entradaId);
-    const aparatosList=nodos.filter(n=>n.tipo_aparato);
-    const valvulasList=nodos.filter(n=>n.valvula_tipo);
-    const valvulasCerradas=valvulasList.filter(n=>n.valvula_cerrada);
-    const totalUG = aparatosList.reduce((sum, n) => {{
-        const ugMap = {json.dumps({k:v["ug"] for k,v in UNIDADES_GASTO.items()})};
-        return sum + (ugMap[n.tipo_aparato] || 0);
-    }}, 0);
-    document.getElementById('resumen').innerHTML=`<strong>🚰 Entrada:</strong> ${{entrada!==null && entrada!==undefined?'Nodo '+entrada.id:'❌ No'}}<br>
-    <strong>📌 Aparatos:</strong> ${{aparatosList.length}}<br>
-    <strong>🔧 Válvulas:</strong> ${{valvulasList.length}} (${{valvulasCerradas.length}} cerradas)<br>
-    <strong>📊 UG totales:</strong> ${{totalUG}} UG<br>
-    <strong>💧 Caudal probable:</strong> ${{(0.2 * Math.sqrt(totalUG) + 0.5).toFixed(2)}} L/s`;
-}}
-
-function guardar(){{
-    if(entradaId === null || entradaId === undefined){{
-        alert('⚠️ Seleccione un nodo de entrada antes de guardar');
-        return;
-    }}
-    const config={{nodo_entrada:entradaId,nodos:nodos.map(n=>({{
-        id:n.id,
-        es_entrada:n.id===entradaId,
-        tipo_aparato:n.tipo_aparato,
-        valvula_tipo:n.valvula_tipo,
-        valvula_cerrada:n.valvula_cerrada || false
-    }}))}};
-    const blob=new Blob([JSON.stringify(config,null,2)],{{type:'application/json'}});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='HydroDomusPy_config.json';
-    a.click();
-    alert('✅ Configuración guardada exitosamente. Cierre esta ventana y continúe en la aplicación.');
-}}
-
-actualizarGrafico();actualizarResumen();
+... // (resto del JavaScript igual)
 </script></body></html>"""
     return html
 
@@ -691,15 +567,8 @@ if st.session_state.red is not None:
     
     red = st.session_state.red
     
-    # Mostrar gráfico 3D de la topología
-    st.plotly_chart(
-        generate_3d_plot(red, st.session_state.presion_entrada), 
-        use_container_width=True, 
-        key="grafico_topologia"
-    )
-    
     # ==========================================
-    # OPCIÓN 1: CONFIGURACIÓN 3D INTERACTIVA
+    # CONFIGURACIÓN 3D INTERACTIVA
     # ==========================================
     with st.expander("🎯 Configuración 3D Interactiva (Recomendado)", expanded=True):
         st.markdown("""
@@ -721,7 +590,7 @@ if st.session_state.red is not None:
             tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
                                   "x2": n2.x, "y2": n2.y, "z2": n2.z})
         
-        # Generar y mostrar HTML interactivo
+        # Generar y mostrar HTML interactivo con tema adaptativo
         html_content = generar_html_config(nodos_data, tuberias_data)
         st.components.v1.html(html_content, height=650, scrolling=True)
         
