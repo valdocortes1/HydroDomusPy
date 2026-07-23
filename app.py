@@ -584,9 +584,9 @@ def procesar_dxf(archivo_dxf):
                 return
             
             opciones_unidades = {
-                "Milímetros (mm)": 1000.0, 
+                "Metros (m)": 1.0,
                 "Centímetros (cm)": 100.0, 
-                "Metros (m)": 1.0, 
+                "Milímetros (mm)": 1000.0,   
                 "Pulgadas (in)": 1 / 0.0254, 
                 "Pies (ft)": 1 / 0.3048
             }
