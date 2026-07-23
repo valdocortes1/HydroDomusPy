@@ -16,50 +16,79 @@ def apply_enhanced_styles():
     if 'tema' in st.session_state:
         is_dark = st.session_state.tema == "dark"
     else:
-        # Fallback al tema del sistema
         theme = st.get_option("theme.base")
         is_dark = theme == "dark"
     
     # ============================================================
-    # PALETA DE COLORES SEGÚN TEMA
+    # PALETA DE COLORES SEGÚN TEMA - DEFINICIÓN CLARA Y PRECISA
     # ============================================================
     if is_dark:
-        # MODO OSCURO
-        bg_primary = "#0e1117"
-        bg_secondary = "#1e2a3a"
-        card_bg = "#262730"
-        border_color = "#3d3d4d"
-        shadow_color = "rgba(0,0,0,0.3)"
-        text_primary = "#ffffff"
-        text_secondary = "#bbbbbb"
-        text_muted = "#888888"
-        text_header = "#ffffff"
-        text_header_sub = "rgba(255,255,255,0.7)"
-        input_bg = "#1e2a3a"
-        input_text = "#ffffff"
-        btn_bg = "rgba(255,255,255,0.08)"
-        btn_hover = "rgba(255,255,255,0.15)"
-        btn_text = "#ffffff"
+        # ===== MODO OSCURO =====
+        COLORS = {
+            "bg_primary": "#0e1117",
+            "bg_secondary": "#1e2a3a",
+            "card_bg": "#262730",
+            "border_color": "#3d3d4d",
+            "shadow_color": "rgba(0,0,0,0.3)",
+            "text_primary": "#ffffff",
+            "text_secondary": "#bbbbbb",
+            "text_muted": "#888888",
+            "text_header": "#ffffff",
+            "text_header_sub": "rgba(255,255,255,0.7)",
+            "input_bg": "#1a2533",
+            "input_text": "#ffffff",
+            "input_border": "#3d3d4d",
+            "btn_bg": "rgba(255,255,255,0.08)",
+            "btn_hover": "rgba(255,255,255,0.15)",
+            "btn_text": "#ffffff",
+            "btn_primary_bg": "#3498db",
+            "btn_primary_hover": "#2980b9",
+            "btn_primary_text": "#ffffff",
+            "tab_bg": "#1e2a3a",
+            "tab_text": "#bbbbbb",
+            "tab_active_bg": "#3498db",
+            "tab_active_text": "#ffffff",
+            "header_grad": "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
+            "metric_value": "#3498db",
+            "section_title": "#3498db",
+            "expander_bg": "#1e2a3a",
+            "expander_text": "#ffffff",
+        }
     else:
-        # MODO CLARO
-        bg_primary = "#f0f2f6"
-        bg_secondary = "#ffffff"
-        card_bg = "#ffffff"
-        border_color = "#d0d0d0"
-        shadow_color = "rgba(0,0,0,0.08)"
-        text_primary = "#1a1a2e"
-        text_secondary = "#4a4a5a"
-        text_muted = "#7a7a8a"
-        text_header = "#ffffff"
-        text_header_sub = "rgba(255,255,255,0.85)"
-        input_bg = "#ffffff"
-        input_text = "#1a1a2e"
-        btn_bg = "#f0f2f6"
-        btn_hover = "#e0e0e0"
-        btn_text = "#1a1a2e"
+        # ===== MODO CLARO =====
+        COLORS = {
+            "bg_primary": "#f0f2f6",
+            "bg_secondary": "#ffffff",
+            "card_bg": "#ffffff",
+            "border_color": "#d0d0d0",
+            "shadow_color": "rgba(0,0,0,0.08)",
+            "text_primary": "#1a1a2e",
+            "text_secondary": "#4a4a5a",
+            "text_muted": "#7a7a8a",
+            "text_header": "#ffffff",
+            "text_header_sub": "rgba(255,255,255,0.85)",
+            "input_bg": "#ffffff",
+            "input_text": "#1a1a2e",
+            "input_border": "#d0d0d0",
+            "btn_bg": "#f0f2f6",
+            "btn_hover": "#e0e0e0",
+            "btn_text": "#1a1a2e",
+            "btn_primary_bg": "#3498db",
+            "btn_primary_hover": "#2980b9",
+            "btn_primary_text": "#ffffff",
+            "tab_bg": "#f0f2f6",
+            "tab_text": "#4a4a5a",
+            "tab_active_bg": "#3498db",
+            "tab_active_text": "#ffffff",
+            "header_grad": "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)",
+            "metric_value": "#3498db",
+            "section_title": "#3498db",
+            "expander_bg": "#ffffff",
+            "expander_text": "#1a1a2e",
+        }
     
     # ============================================================
-    # ESTILOS CSS
+    # APLICAR ESTILOS CSS
     # ============================================================
     st.markdown(f"""
     <style>
@@ -67,42 +96,27 @@ def apply_enhanced_styles():
            ESTILOS GENERALES
            ============================================================ */
         .stApp {{
-            background: {bg_primary};
-        }}
-        
-        .stApp * {{
-            color: {text_primary} !important;
-        }}
-        
-        /* Excepción para elementos que deben mantener su color */
-        .stApp .dot-green {{ background: #2ecc71; color: white !important; }}
-        .stApp .dot-yellow {{ background: #f1c40f; color: white !important; }}
-        .stApp .dot-red {{ background: #e74c3c; color: white !important; }}
-        .stApp .dot-gray {{ background: #7f8c8d; color: white !important; }}
-        
-        /* Ocultar sidebar */
-        .stSidebar {{
-            display: none !important;
+            background: {COLORS["bg_primary"]};
         }}
         
         /* ============================================================
            HEADER SUPERIOR
            ============================================================ */
         .main-header {{
-            background: linear-gradient(135deg, #1a5276, #2471a3, #2e86c1);
+            background: {COLORS["header_grad"]};
             padding: 1rem 2rem;
             border-radius: 12px;
             margin-bottom: 1.2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 20px {shadow_color};
+            box-shadow: 0 4px 20px {COLORS["shadow_color"]};
             flex-wrap: wrap;
             gap: 0.8rem;
         }}
         
         .main-header * {{
-            color: {text_header} !important;
+            color: {COLORS["text_header"]} !important;
         }}
         
         .main-header .logo-section {{
@@ -128,7 +142,7 @@ def apply_enhanced_styles():
         .main-header .subtitle {{
             font-size: 0.8rem;
             margin: 0;
-            color: {text_header_sub} !important;
+            color: {COLORS["text_header_sub"]} !important;
         }}
         
         .main-header .status-section {{
@@ -155,11 +169,16 @@ def apply_enhanced_styles():
             display: inline-block;
         }}
         
+        .dot-green {{ background: #2ecc71; }}
+        .dot-yellow {{ background: #f1c40f; }}
+        .dot-red {{ background: #e74c3c; }}
+        .dot-gray {{ background: #7f8c8d; }}
+        
         /* ============================================================
            BARRA DE HERRAMIENTAS
            ============================================================ */
         .toolbar {{
-            background: {bg_secondary};
+            background: {COLORS["bg_secondary"]};
             padding: 0.6rem 1.2rem;
             border-radius: 10px;
             margin-bottom: 1.2rem;
@@ -167,12 +186,8 @@ def apply_enhanced_styles():
             flex-wrap: wrap;
             gap: 0.6rem;
             align-items: center;
-            box-shadow: 0 2px 10px {shadow_color};
-            border: 1px solid {border_color};
-        }}
-        
-        .toolbar * {{
-            color: {text_secondary} !important;
+            box-shadow: 0 2px 10px {COLORS["shadow_color"]};
+            border: 1px solid {COLORS["border_color"]};
         }}
         
         .toolbar .tool-group {{
@@ -185,68 +200,126 @@ def apply_enhanced_styles():
         .toolbar .divider {{
             width: 1px;
             height: 28px;
-            background: {border_color};
+            background: {COLORS["border_color"]};
             margin: 0 0.4rem;
+        }}
+        
+        /* ============================================================
+           INPUTS Y SELECTORES - CORREGIDO PARA MODO CLARO
+           ============================================================ */
+        /* Contenedor de inputs */
+        .stSelectbox > div, 
+        .stNumberInput > div,
+        .stTextInput > div,
+        .stDateInput > div,
+        .stTimeInput > div,
+        .stTextArea > div,
+        .stFileUploader > div {{
+            background: {COLORS["input_bg"]} !important;
+            border: 1px solid {COLORS["input_border"]} !important;
+            border-radius: 8px !important;
+        }}
+        
+        /* Labels de inputs */
+        .stSelectbox label,
+        .stNumberInput label,
+        .stTextInput label,
+        .stFileUploader label {{
+            color: {COLORS["text_secondary"]} !important;
+            font-weight: 500 !important;
+        }}
+        
+        /* Selectores desplegables */
+        .stSelectbox [data-baseweb="select"] > div {{
+            background: {COLORS["input_bg"]} !important;
+            color: {COLORS["input_text"]} !important;
+            border: none !important;
+        }}
+        
+        .stSelectbox [data-baseweb="select"] input {{
+            color: {COLORS["input_text"]} !important;
+            background: {COLORS["input_bg"]} !important;
+        }}
+        
+        /* Inputs numéricos */
+        .stNumberInput input {{
+            color: {COLORS["input_text"]} !important;
+            background: {COLORS["input_bg"]} !important;
+            border: none !important;
+        }}
+        
+        /* File Uploader */
+        .stFileUploader > div > div {{
+            background: {COLORS["input_bg"]} !important;
+            border: 1px dashed {COLORS["input_border"]} !important;
+            border-radius: 8px !important;
+        }}
+        
+        .stFileUploader > div > div > div {{
+            color: {COLORS["text_secondary"]} !important;
+        }}
+        
+        .stFileUploader button {{
+            background: {COLORS["btn_primary_bg"]} !important;
+            color: {COLORS["btn_primary_text"]} !important;
+            border: none !important;
+        }}
+        
+        .stFileUploader button:hover {{
+            background: {COLORS["btn_primary_hover"]} !important;
         }}
         
         /* ============================================================
            TARJETAS DE MÉTRICAS
            ============================================================ */
         .metric-card {{
-            background: {card_bg};
+            background: {COLORS["card_bg"]};
             padding: 1rem 1.2rem;
             border-radius: 12px;
             text-align: center;
-            border: 1px solid {border_color};
+            border: 1px solid {COLORS["border_color"]};
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px {shadow_color};
+            box-shadow: 0 2px 8px {COLORS["shadow_color"]};
             min-height: 80px;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }}
         
-        .metric-card * {{
-            color: {text_secondary} !important;
-        }}
-        
         .metric-card .metric-value {{
             font-size: 1.6rem;
             font-weight: 700;
-            color: #3498db !important;
+            color: {COLORS["metric_value"]} !important;
         }}
         
         .metric-card .metric-label {{
             font-size: 0.75rem;
+            color: {COLORS["text_secondary"]} !important;
             margin-top: 0.2rem;
         }}
         
         .metric-card:hover {{
-            border-color: #3498db;
+            border-color: {COLORS["metric_value"]};
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px {shadow_color};
+            box-shadow: 0 4px 15px {COLORS["shadow_color"]};
         }}
         
         /* ============================================================
            SECCIONES DE CONFIGURACIÓN
            ============================================================ */
         .config-section {{
-            background: {bg_secondary};
+            background: {COLORS["bg_secondary"]};
             padding: 1.2rem;
             border-radius: 12px;
             margin-bottom: 1.2rem;
-            border: 1px solid {border_color};
-            box-shadow: 0 2px 8px {shadow_color};
-        }}
-        
-        .config-section * {{
-            color: {text_secondary} !important;
+            border: 1px solid {COLORS["border_color"]};
+            box-shadow: 0 2px 8px {COLORS["shadow_color"]};
         }}
         
         .config-section .section-title {{
             font-size: 1rem;
             font-weight: 600;
-            color: #3498db !important;
+            color: {COLORS["section_title"]} !important;
             margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
@@ -258,10 +331,10 @@ def apply_enhanced_styles():
            ============================================================ */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 0.3rem;
-            background: {bg_secondary};
+            background: {COLORS["tab_bg"]};
             padding: 0.4rem;
             border-radius: 10px;
-            border: 1px solid {border_color};
+            border: 1px solid {COLORS["border_color"]};
         }}
         
         .stTabs [data-baseweb="tab"] {{
@@ -269,24 +342,24 @@ def apply_enhanced_styles():
             border-radius: 8px;
             font-weight: 500;
             font-size: 0.85rem;
-            color: {text_secondary} !important;
+            color: {COLORS["tab_text"]} !important;
         }}
         
         .stTabs [data-baseweb="tab"]:hover {{
             background: rgba(52,152,219,0.1);
-            color: {text_primary} !important;
+            color: {COLORS["text_primary"]} !important;
         }}
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            background: #3498db;
-            color: white !important;
+            background: {COLORS["tab_active_bg"]};
+            color: {COLORS["tab_active_text"]} !important;
         }}
         
         /* ============================================================
            DATAFRAMES Y TABLAS
            ============================================================ */
         .stDataFrame {{
-            border: 1px solid {border_color};
+            border: 1px solid {COLORS["border_color"]};
             border-radius: 10px;
             overflow: hidden;
         }}
@@ -296,36 +369,13 @@ def apply_enhanced_styles():
         }}
         
         .stDataFrame thead tr th {{
-            background: {bg_secondary} !important;
-            color: {text_primary} !important;
+            background: {COLORS["bg_secondary"]} !important;
+            color: {COLORS["text_primary"]} !important;
             font-weight: 600 !important;
         }}
         
         .stDataFrame tbody tr td {{
-            color: {text_secondary} !important;
-        }}
-        
-        /* ============================================================
-           INPUTS Y CONTROLES
-           ============================================================ */
-        .stSelectbox > div, .stNumberInput > div {{
-            background: {input_bg};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-        }}
-        
-        .stSelectbox label, .stNumberInput label {{
-            color: {text_secondary} !important;
-        }}
-        
-        .stSelectbox [data-baseweb="select"] > div {{
-            background: {input_bg};
-            color: {input_text} !important;
-        }}
-        
-        .stNumberInput input {{
-            color: {input_text} !important;
-            background: {input_bg};
+            color: {COLORS["text_secondary"]} !important;
         }}
         
         /* ============================================================
@@ -335,40 +385,44 @@ def apply_enhanced_styles():
             font-size: 0.8rem;
             padding: 0.3rem 0.8rem;
             border-radius: 8px;
-            background: {btn_bg};
-            color: {btn_text} !important;
-            border: 1px solid {border_color};
+            background: {COLORS["btn_bg"]};
+            color: {COLORS["btn_text"]} !important;
+            border: 1px solid {COLORS["border_color"]};
         }}
         
         .stButton > button:hover {{
-            background: {btn_hover};
-            border-color: #3498db;
+            background: {COLORS["btn_hover"]};
+            border-color: {COLORS["metric_value"]};
         }}
         
         .stButton > button.primary {{
-            background: #3498db;
-            color: white !important;
-            border-color: #3498db;
+            background: {COLORS["btn_primary_bg"]};
+            color: {COLORS["btn_primary_text"]} !important;
+            border-color: {COLORS["btn_primary_bg"]};
         }}
         
         .stButton > button.primary:hover {{
-            background: #2980b9;
-            border-color: #2980b9;
+            background: {COLORS["btn_primary_hover"]};
+            border-color: {COLORS["btn_primary_hover"]};
         }}
         
         /* ============================================================
            EXPANDERS
            ============================================================ */
         .streamlit-expanderHeader {{
-            color: {text_primary} !important;
-            background: {bg_secondary} !important;
-            border: 1px solid {border_color} !important;
+            color: {COLORS["expander_text"]} !important;
+            background: {COLORS["expander_bg"]} !important;
+            border: 1px solid {COLORS["border_color"]} !important;
             border-radius: 8px !important;
         }}
         
+        .streamlit-expanderHeader:hover {{
+            background: rgba(52,152,219,0.05) !important;
+        }}
+        
         .streamlit-expanderContent {{
-            background: {bg_secondary} !important;
-            border: 1px solid {border_color} !important;
+            background: {COLORS["bg_secondary"]} !important;
+            border: 1px solid {COLORS["border_color"]} !important;
             border-top: none !important;
             border-radius: 0 0 8px 8px !important;
         }}
@@ -377,41 +431,26 @@ def apply_enhanced_styles():
            METRICAS DE STREAMLIT
            ============================================================ */
         [data-testid="metric-container"] {{
-            background: {card_bg};
-            border: 1px solid {border_color};
+            background: {COLORS["card_bg"]};
+            border: 1px solid {COLORS["border_color"]};
             border-radius: 10px;
             padding: 0.8rem;
-            box-shadow: 0 2px 8px {shadow_color};
+            box-shadow: 0 2px 8px {COLORS["shadow_color"]};
         }}
         
         [data-testid="metric-container"] label {{
-            color: {text_secondary} !important;
+            color: {COLORS["text_secondary"]} !important;
         }}
         
         [data-testid="metric-container"] [data-testid="metric-value"] {{
-            color: {text_primary} !important;
-        }}
-        
-        /* ============================================================
-           WELCOME TEXT
-           ============================================================ */
-        .welcome-title {{
-            color: {text_primary} !important;
-        }}
-        
-        .welcome-subtitle {{
-            color: {text_secondary} !important;
-        }}
-        
-        .welcome-muted {{
-            color: {text_muted} !important;
+            color: {COLORS["text_primary"]} !important;
         }}
         
         /* ============================================================
            SELECTOR DE TEMA
            ============================================================ */
-        .stSelectbox [data-baseweb="select"] {{
-            background: {input_bg} !important;
+        .stSelectbox[data-baseweb="select"] {{
+            background: {COLORS["input_bg"]} !important;
         }}
         
         /* ============================================================
@@ -447,17 +486,17 @@ def apply_enhanced_styles():
         }}
         
         ::-webkit-scrollbar-track {{
-            background: {bg_secondary};
+            background: {COLORS["bg_secondary"]};
             border-radius: 3px;
         }}
         
         ::-webkit-scrollbar-thumb {{
-            background: #3498db;
+            background: {COLORS["metric_value"]};
             border-radius: 3px;
         }}
         
         ::-webkit-scrollbar-thumb:hover {{
-            background: #2980b9;
+            background: {COLORS["btn_primary_hover"]};
         }}
     </style>
     """, unsafe_allow_html=True)
