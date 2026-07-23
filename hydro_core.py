@@ -66,7 +66,7 @@ TIPOS_OCUPACION_AGUA = {
         "coeficiente_b": 0.50,
         "color": "#3498db"
     },
-    "Vivienda Multifamiliar": {
+    "Vivienda Multifamiliar / Apartamentos": {
         "descripcion": "Edificios de apartamentos (hasta 20 unidades)",
         "formula": "Q = 0.25 * √UG + 0.6",
         "coeficiente_a": 0.25,
