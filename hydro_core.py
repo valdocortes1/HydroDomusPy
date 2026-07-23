@@ -742,7 +742,7 @@ def generate_3d_plot(red, presion_entrada=15.0):
         ))
     
     # ============================================================
-    # 2. ACCESORIOS CON SÍMBOLOS MEJORADOS
+    # 2. ACCESORIOS CON SÍMBOLOS VÁLIDOS DE PLOTLY
     # ============================================================
     tipos_accesorios = {}
     for acc in red.accesorios:
@@ -752,12 +752,12 @@ def generate_3d_plot(red, presion_entrada=15.0):
             tipos_accesorios[acc.tipo] = []
         tipos_accesorios[acc.tipo].append(acc)
     
-    # Configuración de símbolos mejorada
+    # Configuración de símbolos con valores válidos de Plotly
     config_tipos = {
-        'Tee': {'simbolo': 'T', 'color': '#f39c12', 'nombre': '🔧 Tee', 'size': 10},
-        'Codo_90': {'simbolo': 'L', 'color': '#9b59b6', 'nombre': '🔀 Codo 90°', 'size': 8},
-        'Codo_45': {'simbolo': 'V', 'color': '#8e44ad', 'nombre': '🔄 Codo 45°', 'size': 8},
-        'Reduccion': {'simbolo': 'O', 'color': '#e67e22', 'nombre': '📏 Reducción', 'size': 7},
+        'Tee': {'simbolo': 'cross', 'color': '#f39c12', 'nombre': '🔧 Tee', 'size': 10},
+        'Codo_90': {'simbolo': 'square', 'color': '#9b59b6', 'nombre': '🔀 Codo 90°', 'size': 8},
+        'Codo_45': {'simbolo': 'diamond', 'color': '#8e44ad', 'nombre': '🔄 Codo 45°', 'size': 8},
+        'Reduccion': {'simbolo': 'circle', 'color': '#e67e22', 'nombre': '📏 Reducción', 'size': 7},
     }
     
     for tipo, accesorios in tipos_accesorios.items():
@@ -771,7 +771,7 @@ def generate_3d_plot(red, presion_entrada=15.0):
                     'Esfera': 'Válvula Esfera'
                 }
                 nombre = f'🔧 {nombres_valvulas.get(nombre_valvula, nombre_valvula)}'
-                simbolo = 'D'  # Diamante para válvulas
+                simbolo = 'diamond-open'
                 color = '#e67e22'
                 size = 9
             else:
@@ -789,7 +789,6 @@ def generate_3d_plot(red, presion_entrada=15.0):
         
         hover_texts = []
         for acc in accesorios:
-            # Obtener diámetro del accesorio
             diam = "N/A"
             for t in red.tuberias.values():
                 if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
@@ -840,7 +839,7 @@ def generate_3d_plot(red, presion_entrada=15.0):
     ug_acumulada = red.calcular_ug_acumulada(alcanzables=alcanzables)
     tipo_ocupacion = st.session_state.get('tipo_ocupacion', "Vivienda Unifamiliar")
     
-    # --- CAPAS PARA NODOS CON LEYENDA MEJORADA ---
+    # --- CAPAS PARA NODOS ---
     capas = {
         'Entrada': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': []},
         'Aparatos': {'x': [], 'y': [], 'z': [], 'color': [], 'size': [], 'symbol': [], 'text': [], 'labels': []},
@@ -850,14 +849,12 @@ def generate_3d_plot(red, presion_entrada=15.0):
     for n in red.nodos.values():
         presion_val = n.presion_mca if n.presion_mca is not None else 0
         
-        # Determinar a qué capa pertenece
         if n.es_entrada:
             grupo = 'Entrada'
-            simbolo, tamano = 'star', 12
+            simbolo, tamano = 'diamond', 12
         elif n.tipo_aparato:
             grupo = 'Aparatos'
             simbolo, tamano = 'square', 9
-            # Guardar el nombre del aparato para la leyenda
             capas[grupo]['labels'].append(f"{UNIDADES_GASTO.get(n.tipo_aparato, {}).get('icono', '📌')} {n.tipo_aparato}")
         else:
             grupo = 'Nodos'
@@ -890,7 +887,6 @@ def generate_3d_plot(red, presion_entrada=15.0):
         if n.presion_mca and n.presion_mca < PRESION_MIN_NORMA:
             texto += "\n⚠️ <b>PRESIÓN BAJA</b>"
         
-        # Añadir a su respectiva capa
         capas[grupo]['x'].append(n.x)
         capas[grupo]['y'].append(n.y)
         capas[grupo]['z'].append(n.z)
@@ -906,7 +902,7 @@ def generate_3d_plot(red, presion_entrada=15.0):
             x=capas['Entrada']['x'], y=capas['Entrada']['y'], z=capas['Entrada']['z'],
             mode='markers',
             marker=dict(
-                size=12, symbol='star', color='#e74c3c',
+                size=12, symbol='diamond', color='#e74c3c',
                 line=dict(width=2, color='white')
             ),
             text=capas['Entrada']['text'], hoverinfo='text',
@@ -914,44 +910,42 @@ def generate_3d_plot(red, presion_entrada=15.0):
         ))
     
     # 2. Aparatos (con nombres en la leyenda)
-    if capas['Aparatos']['x']:
-        # Crear una traza por cada tipo de aparato para mostrar en la leyenda
-        aparatos_unicos = {}
-        for i, n in enumerate(red.nodos.values()):
-            if n.tipo_aparato and n.tipo_aparato not in aparatos_unicos:
-                aparatos_unicos[n.tipo_aparato] = {
-                    'x': [], 'y': [], 'z': [], 'text': [], 'color': []
-                }
-        
-        for n in red.nodos.values():
-            if n.tipo_aparato and n.tipo_aparato in aparatos_unicos:
-                aparatos_unicos[n.tipo_aparato]['x'].append(n.x)
-                aparatos_unicos[n.tipo_aparato]['y'].append(n.y)
-                aparatos_unicos[n.tipo_aparato]['z'].append(n.z)
-                aparatos_unicos[n.tipo_aparato]['text'].append(
-                    f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}<br>💪 Presión: {n.presion_mca:.2f} mca" if n.presion_mca else f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}"
-                )
-                aparatos_unicos[n.tipo_aparato]['color'].append(n.presion_mca if n.presion_mca else 0)
-        
-        for aparato, data in aparatos_unicos.items():
-            if data['x']:
-                icono = UNIDADES_GASTO.get(aparato, {}).get('icono', '📌')
-                fig.add_trace(go.Scatter3d(
-                    x=data['x'], y=data['y'], z=data['z'],
-                    mode='markers',
-                    marker=dict(
-                        size=9, symbol='square',
-                        color=data['color'],
-                        colorscale='RdYlGn',
-                        showscale=False,
-                        line=dict(width=1.5, color='white'),
-                        cmin=0, cmax=presion_entrada
-                    ),
-                    text=data['text'], hoverinfo='text',
-                    name=f"{icono} {aparato}", showlegend=True
-                ))
+    aparatos_unicos = {}
+    for n in red.nodos.values():
+        if n.tipo_aparato and n.tipo_aparato not in aparatos_unicos:
+            aparatos_unicos[n.tipo_aparato] = {
+                'x': [], 'y': [], 'z': [], 'text': [], 'color': []
+            }
     
-    # 3. Nodos de paso (sin aparatos ni entrada)
+    for n in red.nodos.values():
+        if n.tipo_aparato and n.tipo_aparato in aparatos_unicos:
+            aparatos_unicos[n.tipo_aparato]['x'].append(n.x)
+            aparatos_unicos[n.tipo_aparato]['y'].append(n.y)
+            aparatos_unicos[n.tipo_aparato]['z'].append(n.z)
+            aparatos_unicos[n.tipo_aparato]['text'].append(
+                f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}<br>💪 Presión: {n.presion_mca:.2f} mca" if n.presion_mca else f"<b>Nodo {n.id}</b><br>📌 {n.tipo_aparato}"
+            )
+            aparatos_unicos[n.tipo_aparato]['color'].append(n.presion_mca if n.presion_mca else 0)
+    
+    for aparato, data in aparatos_unicos.items():
+        if data['x']:
+            icono = UNIDADES_GASTO.get(aparato, {}).get('icono', '📌')
+            fig.add_trace(go.Scatter3d(
+                x=data['x'], y=data['y'], z=data['z'],
+                mode='markers',
+                marker=dict(
+                    size=9, symbol='square',
+                    color=data['color'],
+                    colorscale='RdYlGn',
+                    showscale=False,
+                    line=dict(width=1.5, color='white'),
+                    cmin=0, cmax=presion_entrada
+                ),
+                text=data['text'], hoverinfo='text',
+                name=f"{icono} {aparato}", showlegend=True
+            ))
+    
+    # 3. Nodos de paso
     if capas['Nodos']['x']:
         fig.add_trace(go.Scatter3d(
             x=capas['Nodos']['x'], y=capas['Nodos']['y'], z=capas['Nodos']['z'],
