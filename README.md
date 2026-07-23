@@ -7,7 +7,7 @@
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://hydrodomuspy.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red.svg)](https://streamlit.io)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red.svg)](https://streamlit.io/)
 
 </div>
 
@@ -106,10 +106,13 @@ Puedes probar la aplicación sin instalar nada en:
 - Python 3.8 o superior
 - pip (gestor de paquetes de Python)
 
-### Pasos
+### ⚡ Instalación Automática (Recomendado)
 
-1. **Clonar el repositorio**
+Hydro Domus Py incluye un script de configuración que automatiza todo el proceso:
 
+#### Windows 🪟
+
+1. **Descarga el proyecto** o clónalo:
 ```bash
 git clone https://github.com/valdocortes1/HydroDomusPy.git
 cd HydroDomusPy
