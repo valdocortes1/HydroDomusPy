@@ -1531,7 +1531,7 @@ function mostrarPanel(nodo){{
 }}
 
 function setEntrada(id){{
-    if(entradaId){{
+    if(entradaId!==null && entradaId!==undefined){{
         const old=nodos.find(n=>n.id===entradaId);
         if(old)old.es_entrada=false;
     }}
@@ -1605,16 +1605,20 @@ function actualizarResumen(){{
         const ugMap = {json.dumps({k:v["ug"] for k,v in UNIDADES_GASTO.items()})};
         return sum + (ugMap[n.tipo_aparato] || 0);
     }}, 0);
-    document.getElementById('resumen').innerHTML=`<strong>🚰 Entrada:</strong> ${{entrada?'Nodo '+entrada.id:'❌ No'}}<br>
+    document.getElementById('resumen').innerHTML=`<strong>🚰 Entrada:</strong> ${{entrada!==null && entrada!==undefined?'Nodo '+entrada.id:'❌ No'}}<br>
     <strong>📌 Aparatos:</strong> ${{aparatosList.length}}<br>
     <strong>🔧 Válvulas:</strong> ${{valvulasList.length}} (${{valvulasCerradas.length}} cerradas)<br>
     <strong>📊 UG totales:</strong> ${{totalUG}} UG<br>
     <strong>💧 Caudal probable:</strong> ${{(0.2 * Math.sqrt(totalUG) + 0.5).toFixed(2)}} L/s`;
 }}
 
+// ============================================================
+// ✅ CORRECCIÓN: Guardar configuración con verificación de null
+// ============================================================
 function guardar(){{
-    if(entradaId === null || entradaId === undefined){
-        alert('Seleccione un nodo de entrada');
+    // ✅ Verificar si entradaId es null o undefined (no 0)
+    if(entradaId === null || entradaId === undefined){{
+        alert('⚠️ Seleccione un nodo de entrada antes de guardar');
         return;
     }}
     const config={{nodo_entrada:entradaId,nodos:nodos.map(n=>({{
@@ -1629,7 +1633,7 @@ function guardar(){{
     a.href=URL.createObjectURL(blob);
     a.download='HydroDomusPy_config.json';
     a.click();
-    alert('✅ Configuración guardada. Cierre esta ventana y continúe en la aplicación.');
+    alert('✅ Configuración guardada exitosamente. Cierre esta ventana y continúe en la aplicación.');
 }}
 
 actualizarGrafico();actualizarResumen();
