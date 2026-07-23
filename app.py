@@ -1002,23 +1002,19 @@ if st.session_state.red is not None:
                 key="config_uploader"
             )
         
-        loaded_config = json.load(config_file) if config_file else None
+        # ==========================================
+        # 🔧 CARGAR CONFIGURACIÓN USANDO LA NUEVA FUNCIÓN
+        # ==========================================
+        loaded_config = None
+        if config_file is not None:
+            try:
+                loaded_config = json.load(config_file)
+                st.success("✅ Configuración cargada exitosamente")
+            except Exception as e:
+                st.error(f"Error cargando configuración: {e}")
         
-        nodos_ids = list(red.nodos.keys())
-        default_entrada_idx = 0
-        aparatos_list = [""] * len(nodos_ids)
-        valvulas_list = [""] * len(nodos_ids)
-        aperturas_list = [100.0] * len(nodos_ids)
-
-        if loaded_config:
-            if loaded_config.get("nodo_entrada") in nodos_ids:
-                default_entrada_idx = nodos_ids.index(loaded_config["nodo_entrada"])
-            config_nodos = {n["id"]: n for n in loaded_config.get("nodos", [])}
-            for i, nid in enumerate(nodos_ids):
-                if nid in config_nodos:
-                    aparatos_list[i] = config_nodos[nid].get("tipo_aparato", "")
-                    valvulas_list[i] = config_nodos[nid].get("valvula_tipo", "")
-                    aperturas_list[i] = config_nodos[nid].get("valvula_apertura", 100.0)
+        # Preparar datos para la tabla usando la función auxiliar
+        nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, loaded_config)
 
         col1, col2 = st.columns([1, 2.5])
         with col1:
