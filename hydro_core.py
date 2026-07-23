@@ -910,7 +910,7 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
         capas[grupo]['size'].append(tamano)
         capas[grupo]['symbol'].append(simbolo)
         capas[grupo]['text'].append(texto)
-        capas[grupo]['labels'].append(str(n.id))  # 👈 Número del nodo para etiqueta
+        capas[grupo]['labels'].append(str(n.id))
     
     # --- AÑADIR TRAZAS SEPARADAS ---
     # 1. Entrada
@@ -925,9 +925,10 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
             text=capas['Entrada']['labels'],
             textposition='top center',
             textfont=dict(size=10, color='#ffffff'),
-            text=capas['Entrada']['labels'],  # 👈 Mostrar número del nodo
-            hovertext=capas['Entrada']['text'], hoverinfo='text',
-            name='🚰 Entrada', showlegend=True
+            hovertext=capas['Entrada']['text'],
+            hoverinfo='text',
+            name='🚰 Entrada',
+            showlegend=True
         ))
     
     # 2. Aparatos (con colores diferentes por tipo)
@@ -962,11 +963,13 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
                     color=data['color'],
                     line=dict(width=1.5, color='white')
                 ),
-                text=data['labels'],  # 👈 Mostrar número del nodo
+                text=data['labels'],
                 textposition='top center',
                 textfont=dict(size=9, color='#ffffff'),
-                hovertext=data['text'], hoverinfo='text',
-                name=f"{icono} {aparato}", showlegend=True
+                hovertext=data['text'],
+                hoverinfo='text',
+                name=f"{icono} {aparato}",
+                showlegend=True
             ))
     
     # 3. Nodos de paso
@@ -979,11 +982,13 @@ def generate_3d_plot(red, presion_entrada=15.0, tipo_ocupacion="Vivienda Unifami
                 color=capas['Nodos']['color'],
                 line=dict(width=1, color='white')
             ),
-            text=capas['Nodos']['labels'],  # 👈 Mostrar número del nodo
+            text=capas['Nodos']['labels'],
             textposition='top center',
             textfont=dict(size=8, color='#aaaaaa'),
-            hovertext=capas['Nodos']['text'], hoverinfo='text',
-            name='⚪ Nodos de Paso', showlegend=True
+            hovertext=capas['Nodos']['text'],
+            hoverinfo='text',
+            name='⚪ Nodos de Paso',
+            showlegend=True
         ))
     
     # ============================================================
