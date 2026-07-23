@@ -1,57 +1,115 @@
 # 💧 Hydro Domus Py
-**Simulador Mecanicista de Análisis Hidráulico para Redes Internas**
 
-Hydro Domus Py es una aplicación web de código abierto desarrollada en Python para el diseño, simulación y análisis de redes hidrosanitarias internas. A diferencia de las herramientas que utilizan aproximaciones empíricas simples, este software implementa un motor de cálculo basado en principios físicos fundamentales, integrando la lectura directa de geometrías desde archivos CAD y la generación de reportes técnicos automatizados.
+### Análisis Hidráulico para Redes Internas de Agua Potable
 
----
+<div align="center">
 
-## ✨ Características Principales
-* **🔌 Integración CAD Directa:** Lectura y extracción automática de topologías desde archivos `.dxf` (AutoCAD/DraftSight).
-* **🌐 Topología Inteligente:** Reconstrucción de la red en grafos mediante `NetworkX` para detectar nodos, tramos, accesorios y la ruta crítica de manera automatizada.
-* **📊 Visualización 3D Interactiva:** Renderizado del sistema isométrico y los perfiles de presión utilizando `Plotly`.
-* **📑 Reportes de Ingeniería:** Exportación automatizada a hojas de cálculo (Excel) con memoria de cálculo, cantidades de obra (tuberías, uniones, pegamento) y validación de presiones.
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://hydrodomuspy.streamlit.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red.svg)](https://streamlit.io)
 
----
-
-## ⚙️ Fundamentos Matemáticos y Normativos
-
-El motor matemático (`hydro_core.py`) ejecuta un análisis iterativo basándose en los siguientes modelos mecanicistas:
-
-### 1. Cálculo de Pérdidas de Energía (Fricción)
-* **Ecuación de Darcy-Weisbach:** Se utiliza como la fórmula universal para determinar las pérdidas de carga lineales garantizando la conservación de energía, evaluando dinámicamente la carga de velocidad y la geometría de cada tramo ($L/D$).
-* **Factor de Fricción Dinámico (Colebrook-White):** En lugar de asumir factores constantes, el software evalúa el régimen de flujo calculando el Número de Reynolds en tiempo real y resuelve el factor $f$ para régimen turbulento mediante métodos numéricos no lineales (`scipy.optimize.fsolve`), considerando la rugosidad absoluta de las tuberías de PVC.
-
-### 2. Caudales de Diseño
-* **Método Probabilístico de Hunter:** La asignación de los caudales máximos probables simultáneos se realiza mediante un recorrido topológico en árbol (Búsqueda en Anchura - BFS) desde los aparatos hasta la acometida, acumulando las Unidades de Gasto (UG) según el tipo de edificación.
-
-### 3. Resistencia Localizada
-* **Longitudes Equivalentes ($Leq$):** Detección de cambios de dirección geométrica para asignar automáticamente codos y tees, transformando su coeficiente de resistencia en longitudes equivalentes sumadas al modelo de fricción.
-* **Estrangulamiento de Válvulas:** Modelamiento avanzado de cierres parciales de flujo a través de una penalización cuadrática sobre el área transversal.
-
-### 4. Parámetros Normativos
-* El sistema evalúa gradientes hidráulicos validando que la presión en los nodos más desfavorables (ruta crítica) cumpla con los estándares técnicos y normativos vigentes (e.g., presiones mínimas de la NTC 1500).
+</div>
 
 ---
 
-## 🛠️ Requisitos del Sistema y Prerrequisitos
+## 📋 Descripción
 
-El entorno de ejecución requiere **Python 3.8 o superior**. Las dependencias principales están listadas en el archivo `requirements.txt`:
+**Hydro Domus Py** es una aplicación web de código abierto desarrollada en Python para el diseño, simulación y análisis de redes hidrosanitarias internas. A diferencia de las herramientas que utilizan aproximaciones empíricas simples, este software implementa un **motor de cálculo basado en principios físicos fundamentales**, integrando la lectura directa de geometrías desde archivos CAD y la generación de reportes técnicos automatizados.
 
-* `streamlit` (Interfaz web de usuario)
-* `pandas` (Estructuración de datos de tablas)
-* `networkx` (Análisis de grafos y teoría de redes)
-* `plotly` (Motor de renderizado 3D y gráficos)
-* `openpyxl` (Generación de hojas de cálculo)
-* `ezdxf` (Procesamiento de vectores CAD)
-* `scipy` (Resolución de ecuaciones no lineales complejas)
+### 🎯 ¿Qué hace Hydro Domus Py?
+
+- **📁 Lee planos hidrosanitarios** desde archivos DXF (AutoCAD/DraftSight)
+- **🔧 Construye la red topológica** identificando nodos, tuberías y accesorios
+- **💧 Calcula caudales** usando el método probabilístico de Hunter
+- **📊 Analiza presiones** y pérdidas con ecuaciones mecanicistas (Darcy-Weisbach, Colebrook-White)
+- **🌐 Visualiza en 3D** la red con colores según velocidades y presiones
+- **📋 Genera reportes técnicos** en Excel con cantidades de obra y materiales
+- **🔧 Permite configurar** aparatos sanitarios, válvulas y restricciones de diámetro
+
+### 📐 Normativas Aplicadas
+
+- **NTC 1500** - Norma Técnica Colombiana para instalaciones hidrosanitarias
+- **RAS** - Reglamento Técnico del Sector de Agua Potable y Saneamiento Básico
 
 ---
 
-## 🚀 Instalación y Uso Local
+## ⚙️ Fundamentos Matemáticos
 
-Sigue estos pasos para desplegar el simulador en tu máquina local:
+El motor matemático de Hydro Domus Py ejecuta un análisis iterativo basándose en modelos mecanicistas de alta precisión:
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone [https://github.com/TU_USUARIO/hydro-domus-py.git](https://github.com/TU_USUARIO/hydro-domus-py.git)
-   cd hydro-domus-py
+### 1. 📐 Pérdidas por Fricción (Darcy-Weisbach)
+
+Utiliza la ecuación universal para un cálculo exacto basado en la conservación de energía y la geometría del tramo:
+
+$$h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}$$
+
+### 2. 🔄 Factor de Fricción (Colebrook-White)
+
+Resuelve dinámicamente el factor de fricción $f$ en régimen turbulento mediante métodos numéricos iterativos:
+
+$$\frac{1}{\sqrt{f}} = -2 \log_{10} \left( \frac{\epsilon}{3.71D} + \frac{2.51}{Re \sqrt{f}} \right)$$
+
+### 3. 📊 Caudales de Diseño (Método de Hunter)
+
+Asigna caudales probabilísticos mediante un recorrido topológico en árbol (BFS) que acumula las Unidades de Gasto (UG) según el tipo de edificación:
+
+$$Q = a \cdot \sqrt{UG} + b$$
+
+| Tipo de Edificación | Coeficiente a | Coeficiente b |
+|---------------------|---------------|---------------|
+| Vivienda Unifamiliar | 0.20 | 0.50 |
+| Vivienda Multifamiliar / Apartamentos | 0.25 | 0.60 |
+| Edificio de Oficinas | 0.15 | 0.30 |
+| Hotel / Hostería | 0.18 | 0.40 |
+| Hospital / Clínica | 0.22 | 0.70 |
+| Centro Comercial | 0.12 | 0.40 |
+
+### 4. 🔧 Pérdidas Localizadas (Longitudes Equivalentes)
+
+Transforma la resistencia de accesorios (codos, tees, válvulas) en Longitudes Equivalentes ($Leq$) que se suman al modelo lineal.
+
+### 5. 🚪 Estrangulamiento de Válvulas
+
+Modela cierres parciales aplicando una penalización cuadrática a la longitud equivalente de la válvula:
+
+$$Leq_{efectivo} = Leq_{base} \cdot \left(\frac{100}{Apertura}\right)^2$$
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+| Tecnología | Función |
+|------------|---------|
+| **[Streamlit](https://streamlit.io/)** | Interfaz web de usuario |
+| **[ezdxf](https://ezdxf.mozman.at/)** | Lectura de archivos DXF |
+| **[NetworkX](https://networkx.org/)** | Análisis de grafos y topología |
+| **[Plotly](https://plotly.com/python/)** | Visualización 3D interactiva |
+| **[NumPy](https://numpy.org/)** | Cálculos numéricos |
+| **[SciPy](https://scipy.org/)** | Optimización (fsolve) |
+| **[OpenPyXL](https://openpyxl.readthedocs.io/)** | Exportación a Excel |
+
+---
+
+## 🚀 Demo en Vivo
+
+Puedes probar la aplicación sin instalar nada en:
+
+[https://hydrodomuspy.streamlit.app](https://hydrodomuspy.streamlit.app)
+
+---
+
+## 📦 Instalación Local
+
+### Requisitos
+
+- Python 3.8 o superior
+- pip (gestor de paquetes de Python)
+
+### Pasos
+
+1. **Clonar el repositorio**
+
+```bash
+git clone https://github.com/valdocortes1/HydroDomusPy.git
+cd HydroDomusPy
