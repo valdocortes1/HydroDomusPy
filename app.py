@@ -32,38 +32,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================================================================================
-# LEER CONFIGURACIÓN DESDE SESSIONSTORAGE (JavaScript)
-# ================================================================================
 
-# Este código JavaScript se ejecuta en el navegador y lee sessionStorage
-# Luego envía la configuración a Streamlit mediante st.query_params
-
-st.markdown("""
-<script>
-// Leer configuración de sessionStorage
-(function() {
-    try {
-        const configJson = sessionStorage.getItem('hydro_config_3d_sync');
-        if (configJson) {
-            // Limpiar sessionStorage para evitar recargas infinitas
-            sessionStorage.removeItem('hydro_config_3d_sync');
-            
-            // Codificar y pasar a Streamlit como parámetro URL
-            const encoded = encodeURIComponent(configJson);
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('sync_config', encoded);
-            window.history.replaceState({}, '', currentUrl);
-            
-            // Recargar la página para que Streamlit procese el parámetro
-            location.reload();
-        }
-    } catch(e) {
-        console.log('Error leyendo sessionStorage:', e);
-    }
-})();
-</script>
-""", unsafe_allow_html=True)
 # ================================================================================
 # CONFIGURACIÓN DE UNIDADES DE DIBUJO
 # ================================================================================
@@ -106,81 +75,6 @@ if 'nodos_raw' not in st.session_state:
     st.session_state.nodos_raw = None
 
 
-# ================================================================================
-# FUNCIÓN PARA DETECTAR SINCRONIZACIÓN DESDE LA INTERFAZ 3D
-# ================================================================================
-
-def detectar_carga_3d():
-    """
-    Detecta si hay una solicitud de carga desde la interfaz 3D.
-    """
-    query_params = st.query_params
-    
-    if 'cargar_config' in query_params and query_params['cargar_config'] == '3d':
-        # Limpiar el parámetro
-        st.query_params.clear()
-        
-        # Leer la configuración desde sessionStorage usando JavaScript
-        st.markdown("""
-        <script>
-        (function() {
-            try {
-                const configJson = sessionStorage.getItem('hydro_config_3d');
-                if (configJson) {
-                    const config = JSON.parse(configJson);
-                    // Guardar en session_state usando un parámetro
-                    const encoded = encodeURIComponent(configJson);
-                    const currentUrl = new URL(window.location.href);
-                    currentUrl.searchParams.set('config_3d_data', encoded);
-                    window.history.replaceState({}, '', currentUrl);
-                    location.reload();
-                }
-            } catch(e) {
-                console.log('Error:', e);
-            }
-        })();
-        </script>
-        """, unsafe_allow_html=True)
-        return True
-    
-    if 'config_3d_data' in query_params:
-        try:
-            config_json = query_params['config_3d_data']
-            config = json.loads(config_json)
-            st.query_params.clear()
-            
-            if st.session_state.red and config:
-                # Aplicar configuración
-                for nodo_cfg in config.get("nodos", []):
-                    nid = nodo_cfg.get("id")
-                    if nid in st.session_state.red.nodos:
-                        nodo = st.session_state.red.nodos[nid]
-                        nodo.es_entrada = nodo_cfg.get("es_entrada", False)
-                        nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
-                        nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
-                        nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
-                        nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
-                
-                if config.get("nodo_entrada") is not None:
-                    st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
-                
-                st.session_state.config_3d = config
-                st.success("✅ Configuración cargada desde la interfaz 3D")
-                st.rerun()
-                return True
-                
-        except Exception as e:
-            st.error(f"Error: {e}")
-            st.query_params.clear()
-            return False
-    
-    return False
-
-# ================================================================================
-# LLAMAR A LA FUNCIÓN DE DETECCIÓN
-# ================================================================================
-if detectar_carga_3d():
-    pass
 # ================================================================================
 # IMPORTACIONES DE MÓDULOS PROPIOS
 # ================================================================================
@@ -225,9 +119,6 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .btn-danger:hover{{background:#c0392b}}
 .btn-secondary{{background:#7f8c8d}}
 .btn-secondary:hover{{background:#5d6d7e}}
-.btn-sync{{background:#8e44ad}}
-.btn-sync:hover{{background:#6c3483}}
-.btn-sync.active{{background:#27ae60}}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
@@ -241,7 +132,6 @@ input[type="range"]{{width:100%;margin:5px 0;accent-color:#3498db}}
 .upload-area:hover{{border-color:#3498db;background:rgba(52,152,219,0.1)}}
 hr{{margin:8px 0;border-color:#444444}}
 label{{color:#ffffff}}
-.sync-status{{font-size:9px;color:#888;text-align:center;margin:2px 0}}
 </style>
 </head>
 <body>
@@ -250,14 +140,6 @@ label{{color:#ffffff}}
 <div id="sidebar">
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
-
-<!-- Botón de implementación de configuración -->
-<div style="margin-top:8px;">
-    <button class="btn btn-sync" onclick="implementarConfiguracion()" id="syncBtn" style="width:100%; font-size:11px; padding:6px;">
-        ⚡ Implementar Configuración
-    </button>
-    <p class="sync-status" id="syncStatus">Aplica la configuración actual a la tabla manual</p>
-</div>
 
 <!-- Área de carga de configuración -->
 <div style="margin-top:8px; border:1px solid #444; border-radius:6px; padding:6px;">
@@ -290,54 +172,6 @@ console.log("Tuberías cargadas:", tuberias.length);
 let entradaId = null;
 let nodoSeleccionado = null;
 let currentCamera = null;
-
-// ============================================================
-// FUNCIÓN PARA GENERAR LA MATRIZ DE CONFIGURACIÓN
-// ============================================================
-function generarConfiguracionRed() {{
-    const config = {{
-        nodo_entrada: entradaId,
-        nodos: nodos.map(n => ({{
-            id: n.id,
-            es_entrada: n.id === entradaId,
-            tipo_aparato: n.tipo_aparato,
-            valvula_tipo: n.valvula_tipo,
-            valvula_cerrada: n.valvula_cerrada || false,
-            valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
-        }}))
-    }};
-    return config;
-}}
-
-// ============================================================
-// FUNCIÓN PARA IMPLEMENTAR LA CONFIGURACIÓN EN LA TABLA
-// ============================================================
-function implementarConfiguracion() {{
-    const btn = document.getElementById('syncBtn');
-    const status = document.getElementById('syncStatus');
-    
-    // Generar la configuración
-    const config = generarConfiguracionRed();
-    const configJson = JSON.stringify(config);
-    
-    // Guardar en sessionStorage
-    try {{
-        sessionStorage.setItem('hydro_config_3d', configJson);
-        console.log("✅ Configuración implementada:", config);
-        btn.classList.add('active');
-        status.innerHTML = '✅ Configuración implementada. Recargando tabla...';
-        status.style.color = '#2ecc71';
-        
-        // Recargar la página para que Streamlit lea la configuración
-        setTimeout(() => {{
-            window.location.href = window.location.pathname + '?cargar_config=3d';
-        }}, 300);
-    }} catch(e) {{
-        console.warn("Error al implementar:", e);
-        status.innerHTML = '❌ Error al implementar la configuración';
-        status.style.color = '#e74c3c';
-    }}
-}}
 
 // ============================================================
 // FUNCIÓN PARA CARGAR CONFIGURACIÓN DESDE JSON (archivo)
