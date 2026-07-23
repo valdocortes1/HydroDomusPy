@@ -595,25 +595,35 @@ class HydraulicAnalyzer:
 # ================================================================================
 # CLASE LECTOR DXF
 # ================================================================================
+
 class DXFReader:
     def __init__(self, archivo):
+        """Inicializa el lector DXF"""
         self.doc = ezdxf.readfile(archivo)
         self.msp = self.doc.modelspace()
         self.log_callback = None
     
     def set_log_callback(self, callback):
+        """Establece una función callback para logging"""
         self.log_callback = callback
     
     def log_message(self, message, level="INFO"):
+        """Envía mensaje de log al callback si existe"""
         if self.log_callback:
             self.log_callback(message, level)
         else:
             print(f"[{level}] {message}")
     
     def obtener_layers(self):
+        """Obtiene la lista de layers del DXF"""
         return [layer.dxf.name for layer in self.doc.layers]
     
     def extraer_lineas(self, layers):
+        """
+        Extrae todas las líneas y polilíneas de los layers seleccionados.
+        CORREGIDO: Manejo correcto de points() con context manager
+        Soporta: LINE, LWPOLYLINE, POLYLINE, 3DPOLYLINE
+        """
         lineas = []
         layers_set = set(layers)
         
@@ -634,6 +644,9 @@ class DXFReader:
             if entity.dxf.layer not in layers_set:
                 continue
             
+            # ============================================================
+            # 1. LÍNEAS (LINE)
+            # ============================================================
             if dxftype == 'LINE':
                 s = entity.dxf.start
                 e = entity.dxf.end
@@ -644,58 +657,90 @@ class DXFReader:
                 stats['LINE'] += 1
                 stats['total_segmentos'] += 1
             
+            # ============================================================
+            # 2. POLILÍNEAS LIGERAS 2D (LWPOLYLINE)
+            # ============================================================
             elif dxftype == 'LWPOLYLINE':
-                pts = list(entity.points())
                 elevation = entity.dxf.elevation if hasattr(entity.dxf, 'elevation') else 0
+                pts = []
                 
-                for i in range(len(pts) - 1):
-                    z1 = pts[i][2] if len(pts[i]) > 2 else elevation
-                    z2 = pts[i+1][2] if len(pts[i+1]) > 2 else elevation
-                    lineas.append((
-                        pts[i][0], pts[i][1], z1,
-                        pts[i+1][0], pts[i+1][1], z2
-                    ))
-                    stats['total_segmentos'] += 1
-                stats['LWPOLYLINE'] += 1
-            
-            elif dxftype in ('POLYLINE', '3DPOLYLINE'):
-                segmentos_agregados = 0
-                
+                # 🔧 FORMA CORRECTA: Usar context manager con 'with'
                 try:
-                    vertices = list(entity.vertices())
-                    for i in range(len(vertices) - 1):
-                        v1 = vertices[i].dxf.location
-                        v2 = vertices[i+1].dxf.location
+                    with entity.points() as p_list:
+                        for p in p_list:
+                            if len(p) >= 3:
+                                pts.append((p[0], p[1], p[2]))
+                            else:
+                                pts.append((p[0], p[1], elevation))
+                except Exception as e:
+                    # Fallback: método alternativo
+                    try:
+                        for p in entity.points():
+                            if len(p) >= 3:
+                                pts.append((p[0], p[1], p[2]))
+                            else:
+                                pts.append((p[0], p[1], elevation))
+                    except Exception as e2:
+                        self.log_message(f"Error extrayendo puntos de LWPOLYLINE: {e2}", "WARNING")
+                        continue
+                
+                if pts:
+                    for i in range(len(pts) - 1):
                         lineas.append((
-                            v1.x, v1.y, v1.z,
-                            v2.x, v2.y, v2.z
+                            pts[i][0], pts[i][1], pts[i][2] if len(pts[i]) > 2 else elevation,
+                            pts[i+1][0], pts[i+1][1], pts[i+1][2] if len(pts[i+1]) > 2 else elevation
                         ))
-                        segmentos_agregados += 1
                         stats['total_segmentos'] += 1
                     
-                    if segmentos_agregados > 0:
-                        stats['POLYLINE' if dxftype == 'POLYLINE' else '3DPOLYLINE'] += 1
-                        
+                    if hasattr(entity, 'closed') and entity.closed and len(pts) > 2:
+                        lineas.append((
+                            pts[-1][0], pts[-1][1], pts[-1][2] if len(pts[-1]) > 2 else elevation,
+                            pts[0][0], pts[0][1], pts[0][2] if len(pts[0]) > 2 else elevation
+                        ))
+                        stats['total_segmentos'] += 1
+                    
+                    stats['LWPOLYLINE'] += 1
+            
+            # ============================================================
+            # 3. POLILÍNEAS 3D (POLYLINE / 3DPOLYLINE)
+            # ============================================================
+            elif dxftype in ('POLYLINE', '3DPOLYLINE'):
+                pts = []
+                
+                # 🔧 FORMA CORRECTA: Usar context manager con 'with'
+                try:
+                    with entity.points() as p_list:
+                        for p in p_list:
+                            if len(p) >= 3:
+                                pts.append((p[0], p[1], p[2]))
+                            else:
+                                pts.append((p[0], p[1], 0))
                 except Exception as e:
+                    # Fallback: intentar con vertices() para POLYLINE 3D
                     try:
-                        pts = list(entity.points()) if hasattr(entity, 'points') else []
-                        for i in range(len(pts) - 1):
-                            p1 = pts[i]
-                            p2 = pts[i+1]
-                            z1 = p1[2] if len(p1) > 2 else 0
-                            z2 = p2[2] if len(p2) > 2 else 0
-                            lineas.append((
-                                p1[0], p1[1], z1,
-                                p2[0], p2[1], z2
-                            ))
-                            segmentos_agregados += 1
-                            stats['total_segmentos'] += 1
-                        
-                        if segmentos_agregados > 0:
-                            stats['POLYLINE' if dxftype == 'POLYLINE' else '3DPOLYLINE'] += 1
-                            
+                        for vertex in entity.vertices():
+                            loc = vertex.dxf.location
+                            pts.append((loc.x, loc.y, loc.z))
                     except Exception as e2:
-                        self.log_message(f"No se pudo leer entidad {dxftype}: {e2}", "WARNING")
+                        self.log_message(f"Error extrayendo puntos de POLYLINE: {e2}", "WARNING")
+                        continue
+                
+                if pts:
+                    for i in range(len(pts) - 1):
+                        lineas.append((
+                            pts[i][0], pts[i][1], pts[i][2] if len(pts[i]) > 2 else 0,
+                            pts[i+1][0], pts[i+1][1], pts[i+1][2] if len(pts[i+1]) > 2 else 0
+                        ))
+                        stats['total_segmentos'] += 1
+                    
+                    if hasattr(entity, 'is_closed') and entity.is_closed and len(pts) > 2:
+                        lineas.append((
+                            pts[-1][0], pts[-1][1], pts[-1][2] if len(pts[-1]) > 2 else 0,
+                            pts[0][0], pts[0][1], pts[0][2] if len(pts[0]) > 2 else 0
+                        ))
+                        stats['total_segmentos'] += 1
+                    
+                    stats['POLYLINE' if dxftype == 'POLYLINE' else '3DPOLYLINE'] += 1
         
         self.log_message(f"Extracción completada:", "INFO")
         self.log_message(f"   📊 Líneas (LINE): {stats['LINE']}", "INFO")
