@@ -1616,7 +1616,7 @@ function guardar(){{
     if(entradaId === null || entradaId === undefined){
         alert('Seleccione un nodo de entrada');
         return;
-    }
+    }}
     const config={{nodo_entrada:entradaId,nodos:nodos.map(n=>({{
         id:n.id,
         es_entrada:n.id===entradaId,
