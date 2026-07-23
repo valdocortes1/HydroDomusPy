@@ -1,0 +1,394 @@
+# ============================================================================
+# PYTHON
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# ============================================================================
+# STREAMLIT
+# ============================================================================
+.streamlit/cache/
+.streamlit/secrets.toml
+.streamlit/*.db
+.streamlit/*.log
+.streamlit/credentials.toml
+.streamlit/cookies.toml
+
+# ============================================================================
+# IDE / EDITORES
+# ============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+.vscode-test/
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+
+# Vim
+*.swp
+*.swo
+*~
+.*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# ============================================================================
+# SISTEMAS OPERATIVOS
+# ============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.directory
+.directory-*-*
+.Trash-*
+.nfs*
+
+# ============================================================================
+# ARCHIVOS TEMPORALES Y LOGS
+# ============================================================================
+*.log
+*.tmp
+*.temp
+*.cache
+*.pid
+*.seed
+*.pid.lock
+logs/
+temp/
+tmp/
+temp/*.dxf
+temp/*.json
+temp/*.html
+temp/*.xlsx
+
+# ============================================================================
+# ARCHIVOS DE CONFIGURACIÓN LOCAL
+# ============================================================================
+*.local
+*.secret
+*.private
+config.local.*
+*.config.local
+.env.local
+.env.*.local
+
+# ============================================================================
+# DXF Y CAD
+# ============================================================================
+*.dxf.bak
+*.dxf.tmp
+*.dwg
+*.bak
+*.ac$
+*.sv$
+*.bak$
+*.dwl
+*.dwl2
+*.plot
+
+# ============================================================================
+# EXCEL Y DOCUMENTOS
+# ============================================================================
+~$*.xlsx
+~$*.xls
+*.xlsx.bak
+*.xls.bak
+*.xlsm
+*.xlsb
+*.xltx
+*.xltm
+
+# ============================================================================
+# ARCHIVOS DE DATOS
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.dat
+*.data
+*.pickle
+*.pkl
+
+# ============================================================================
+# ARCHIVOS GENERADOS POR LA APLICACIÓN
+# ============================================================================
+# Archivos de configuración generados
+HydroDomusPy_config.json
+HydroDomusPy_config_*.json
+HydroDomusPy_*.xlsx
+HydroDomusPy_*.html
+
+# Reportes y exportaciones
+reportes/
+exports/
+descargas/
+*.html.old
+
+# ============================================================================
+# ARCHIVOS COMPRIMIDOS
+# ============================================================================
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.gz
+*.bz2
+
+# ============================================================================
+# ARCHIVOS DE IMAGEN
+# ============================================================================
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.svg
+
+# ============================================================================
+# OTROS
+# ============================================================================
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Cobertura de código
+coverage/
+coverage.xml
+*.cover
+
+# Archivos de editor
+.editorconfig
+
+# SonarCloud
+.scannerwork/
+.sonarlint/
+
+# Dependencias de Node (si se usa)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Dependencias de Ruby (si se usa)
+Gemfile
+Gemfile.lock
+
+# ============================================================================
+# ARCHIVOS DE PROYECTO
+# ============================================================================
+# Ignorar archivos específicos del proyecto
+.DS_Store
+.project
+.classpath
+.settings/
+*.project
+*.classpath
+
+# ============================================================================
+# ARCHIVOS DE PRUEBAS
+# ============================================================================
+tests/__pycache__/
+tests/*.pyc
+test_*.pyc
+*_test.pyc
+
+# ============================================================================
+# ARCHIVOS DE DEPLOYMENT
+# ============================================================================
+.terraform/
+*.tfplan
+*.tfstate
+*.tfstate.backup
+
+# ============================================================================
+# MISCELÁNEOS
+# ============================================================================
+# Archivos de configuración de logging
+*.log.*
+*.err
+*.out
+
+# Archivos de backup
+*~
+*.backup
+*.bak
+*.old
+*.orig
+*.rej
+
+# Archivos de intercambio
+*.swp
+*.swo
+*.tmp
+*.temp
+
+# Archivos de editor de texto
+*.autosave
+*.autosave.*
+
+# Archivos temporales de streaming
+*.ts
+*.m3u8
+
+# Archivos de análisis de código
+*.py.lint
+*.py.mypy
+*.py.bandit
+
+# ============================================================================
+# STREAMLIT SECRETS (¡IMPORTANTE!)
+# ============================================================================
+# NUNCA subir secrets.toml a GitHub
+.streamlit/secrets.toml
+.streamlit/secrets.*.toml
+
+# ============================================================================
+# ARCHIVOS DE CONFIGURACIÓN DE LA APLICACIÓN
+# ============================================================================
+# Archivos de configuración que pueden contener datos sensibles
+config.ini
+settings.ini
+*.key
+*.pem
+*.crt
+*.cer
+*.keychain
+*.p12
