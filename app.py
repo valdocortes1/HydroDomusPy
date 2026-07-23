@@ -1677,7 +1677,7 @@ def main():
     if 'factor_conversion' not in st.session_state:
         st.session_state.factor_conversion = 1000
     if 'paso_actual' not in st.session_state:
-        st.session_state.paso_actual = 1  # 1=DXF, 2=Configurar, 3=Analizar
+        st.session_state.paso_actual = 1
 
     # ============================================================
     # BARRA LATERAL - SOLO CONTROLES ESENCIALES
@@ -1694,7 +1694,7 @@ def main():
         
         st.divider()
         
-        # ===== CARGAR DXF (siempre visible) =====
+        # ===== CARGAR DXF =====
         st.markdown("### 📁 Cargar DXF")
         
         dxf_file = st.file_uploader(
@@ -1714,10 +1714,74 @@ def main():
         st.session_state.unidad_dibujo = unidad_seleccionada
         st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
         
-        # Procesar DXF
+        # ===== PROCESAR DXF (CORREGIDO) =====
         if dxf_file is not None:
-            # ... (código de procesamiento igual que antes)
-            pass
+            st.success(f"✅ Archivo cargado: {dxf_file.name}")
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
+                tmp.write(dxf_file.getvalue())
+                tmp_path = tmp.name
+                st.session_state.tmp_dxf_path = tmp_path
+            
+            try:
+                reader = DXFReader(tmp_path)
+                reader.set_log_callback(lambda msg, lvl: None)
+                layers = reader.obtener_layers()
+                st.session_state.dxf_layers = layers
+                st.session_state.dxf_loaded = True
+                st.session_state.dxf_reader = reader
+                
+                st.info(f"📋 {len(layers)} layers encontrados")
+                
+                selected = st.multiselect(
+                    "Seleccionar layers:",
+                    options=layers,
+                    default=layers[:3] if len(layers) >= 3 else layers,
+                    key="layer_selector_sidebar"
+                )
+                
+                if selected:
+                    st.session_state.selected_layers = selected
+                    if st.button("🚀 Construir Red", type="primary", use_container_width=True, key="build_red_sidebar"):
+                        with st.spinner("Construyendo red..."):
+                            lineas_raw = reader.extraer_lineas(selected)
+                            if lineas_raw:
+                                factor = st.session_state.factor_conversion
+                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
+                                nodos_dict, tuberias = construir_red(lineas)
+                                
+                                red = RedHidraulica()
+                                for (x, y, z), nid in nodos_dict.items():
+                                    red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
+                                for t in tuberias:
+                                    red.agregar_tuberia(t)
+                                
+                                st.session_state.red = red
+                                
+                                if len(red.nodos) > 0:
+                                    primer_nodo = list(red.nodos.keys())[0]
+                                    red.nodo_entrada_id = primer_nodo
+                                    red.nodos[primer_nodo].es_entrada = True
+                                    ajustar_cotas_relativas(red)
+                                
+                                st.session_state.paso_actual = 2
+                                st.success(f"✅ Red: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
+                                st.rerun()
+                            else:
+                                st.error("No se encontraron líneas en los layers seleccionados")
+                else:
+                    st.warning("Seleccione al menos un layer")
+                    
+            except Exception as e:
+                st.error(f"Error leyendo DXF: {e}")
+                st.session_state.dxf_loaded = False
+            
+            if st.session_state.tmp_dxf_path and os.path.exists(st.session_state.tmp_dxf_path):
+                try:
+                    os.unlink(st.session_state.tmp_dxf_path)
+                    st.session_state.tmp_dxf_path = None
+                except:
+                    pass
         
         st.divider()
         
@@ -1759,23 +1823,23 @@ def main():
             
             col1, col2 = st.columns(2)
             with col1:
-                vel_min = st.number_input("Vel. mín", value=st.session_state.vel_min, min_value=0.1, max_value=5.0, step=0.1)
+                vel_min = st.number_input("Vel. mín", value=st.session_state.vel_min, min_value=0.1, max_value=5.0, step=0.1, key="vel_min_sidebar")
                 st.session_state.vel_min = vel_min
             with col2:
-                vel_max = st.number_input("Vel. máx", value=st.session_state.vel_max, min_value=0.5, max_value=10.0, step=0.1)
+                vel_max = st.number_input("Vel. máx", value=st.session_state.vel_max, min_value=0.5, max_value=10.0, step=0.1, key="vel_max_sidebar")
                 st.session_state.vel_max = vel_max
             
-            restringir = st.checkbox("Restringir diámetro")
+            restringir = st.checkbox("Restringir diámetro", key="restringir_sidebar")
             if restringir:
-                diam_max = st.selectbox("Diámetro máximo:", options=list(DIAMETROS_PAVCO.keys()))
+                diam_max = st.selectbox("Diámetro máximo:", options=list(DIAMETROS_PAVCO.keys()), key="diam_max_sidebar")
                 st.session_state.diametro_maximo = DIAMETROS_PAVCO[diam_max]
             else:
                 st.session_state.diametro_maximo = None
         
-        # ===== BOTÓN EJECUTAR (siempre visible) =====
+        # ===== BOTÓN EJECUTAR =====
         if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
             st.divider()
-            if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True):
+            if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True, key="ejecutar_sidebar"):
                 with st.spinner("Ejecutando análisis..."):
                     analyzer = HydraulicAnalyzer(
                         st.session_state.red,
@@ -1807,7 +1871,6 @@ def main():
     # ============================================================
     # ÁREA PRINCIPAL - CONTENIDO DINÁMICO
     # ============================================================
-    
     if st.session_state.red is None:
         # Pantalla de bienvenida
         st.title("💧 Hydro Domus Py")
@@ -1836,14 +1899,6 @@ def main():
             - Visualización 3D interactiva
             - Exportación a Excel
             """)
-        
-        # Mostrar estado actual si hay red cargada
-        if st.session_state.red is not None:
-            st.info(f"✅ Red cargada: {len(st.session_state.red.nodos)} nodos, {len(st.session_state.red.tuberias)} tuberías")
-            if st.session_state.red.nodo_entrada_id is not None:
-                st.success(f"✅ Nodo de entrada: {st.session_state.red.nodo_entrada_id}")
-            else:
-                st.warning("⚠️ Configure el nodo de entrada en la pestaña 'Configuración 3D'")
     
     else:
         # Mostrar resultados
@@ -1851,7 +1906,7 @@ def main():
         resultados = st.session_state.resultados
         
         # ============================================================
-        # PESTAÑAS - CONFIGURACIÓN 3D PRIMERO
+        # PESTAÑAS
         # ============================================================
         tab_config, tab_resumen, tab_viz, tab_perfil, tab_tablas, tab_materiales = st.tabs([
             "🔧 Configuración 3D",
@@ -1863,12 +1918,11 @@ def main():
         ])
         
         # ============================================================
-        # PESTAÑA 1: CONFIGURACIÓN 3D (INTERACTIVA)
+        # PESTAÑA 1: CONFIGURACIÓN 3D
         # ============================================================
         with tab_config:
             st.subheader("🔧 Configuración Interactiva de la Red")
             
-            # Información de la red
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("🔢 Nodos", len(red.nodos))
@@ -1880,11 +1934,9 @@ def main():
             
             st.divider()
             
-            # ===== CONFIGURACIÓN 3D INTERACTIVA =====
             st.markdown("### 🎯 Configurar Nodos en 3D")
             st.caption("💡 Haga clic en cualquier nodo del gráfico para asignar entrada, aparatos o válvulas")
             
-            # Preparar datos para el HTML interactivo
             nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
                            "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
                            "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
@@ -1896,19 +1948,16 @@ def main():
                 tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
                                       "x2": n2.x, "y2": n2.y, "z2": n2.z})
             
-            # Generar HTML interactivo
             html_content = generar_html_config(nodos_data, tuberias_data)
             
-            # Mostrar en un contenedor con altura completa
             with st.container():
                 st.components.v1.html(html_content, height=650, scrolling=True)
             
-            # ===== ASIGNACIÓN MANUAL (alternativa) =====
+            # ... resto de la pestaña config (igual que antes)
             with st.expander("📌 Asignación Manual (alternativa)"):
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Seleccionar nodo de entrada
                     nodo_ids = list(red.nodos.keys())
                     entrada_actual = red.nodo_entrada_id
                     nodo_entrada = st.selectbox(
@@ -1930,7 +1979,6 @@ def main():
                             st.rerun()
                 
                 with col2:
-                    # Seleccionar nodo para asignar aparato
                     nodo_aparato = st.selectbox(
                         "Nodo para aparato:",
                         options=nodo_ids,
@@ -1952,11 +2000,9 @@ def main():
                             st.success(f"✅ Aparato '{tipo_aparato}' asignado al nodo {nodo_aparato}")
                             st.rerun()
             
-            # ===== BOTONES DE ACCIÓN =====
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                # Cargar configuración desde JSON
                 config_file = st.file_uploader(
                     "📂 Cargar configuración JSON",
                     type=['json'],
@@ -1968,14 +2014,12 @@ def main():
                     try:
                         config = json.loads(config_file.getvalue().decode('utf-8'))
                         
-                        # Resetear configuración actual
                         for n in red.nodos.values():
                             n.es_entrada = False
                             n.tipo_aparato = ""
                             n.valvula_tipo = ""
                             n.valvula_cerrada = False
                         
-                        # Aplicar configuración
                         nodo_entrada_cfg = config.get("nodo_entrada")
                         if nodo_entrada_cfg in red.nodos:
                             red.nodo_entrada_id = nodo_entrada_cfg
@@ -2031,7 +2075,6 @@ def main():
                         st.success("✅ Configuración reseteada")
                         st.rerun()
             
-            # ===== RESUMEN DE CONFIGURACIÓN =====
             st.divider()
             st.markdown("### 📋 Resumen de Configuración")
             
@@ -2046,7 +2089,6 @@ def main():
                 ug_total_config = sum(UNIDADES_GASTO.get(n.tipo_aparato, {}).get("ug", 0) for n in red.nodos.values() if n.tipo_aparato)
                 st.metric("📊 UG totales", f"{ug_total_config:.0f}")
             
-            # Mostrar nodos configurados
             if aparatos_asignados > 0 or valvulas_asignadas > 0:
                 st.caption("Nodos configurados:")
                 nodos_config = []
@@ -2061,7 +2103,6 @@ def main():
                             estado.append(f"🔧 {n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})")
                         nodos_config.append(f"Nodo {n.id}: " + " | ".join(estado))
                 
-                # Mostrar en un scrollable
                 st.text_area("", "\n".join(nodos_config), height=100, disabled=True)
         
         # ============================================================
@@ -2071,7 +2112,6 @@ def main():
             st.subheader("📊 Resumen del Análisis")
             
             if resultados:
-                # Métricas en fila
                 col1, col2, col3, col4, col5 = st.columns(5)
                 col1.metric("🔢 Nodos", len(red.nodos))
                 col2.metric("🔗 Tuberías", len(red.tuberias))
@@ -2098,7 +2138,6 @@ def main():
                 
                 st.divider()
                 
-                # Botones de exportación
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("📊 Exportar a Excel", use_container_width=True):
@@ -2143,7 +2182,7 @@ def main():
                 st.info("Ejecute el análisis para ver la visualización 3D")
         
         # ============================================================
-        # PESTAÑA 4: PERFIL DE PRESIONES
+        # PESTAÑA 4: PERFIL
         # ============================================================
         with tab_perfil:
             st.subheader("📈 Perfil de Presiones")
