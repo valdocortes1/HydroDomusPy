@@ -1213,29 +1213,63 @@ if st.session_state.red is not None:
             for n in red.nodos.values():
                 datos_nodos.append({
                     "ID": n.id,
-                    "X (m)": round(n.x, 2),
-                    "Y (m)": round(n.y, 2),
-                    "Z (m)": round(n.z, 2),
-                    "Presión (mca)": round(n.presion_mca, 2) if n.presion_mca else None,
+                    "X (m)": round(n.x, 2) if n.x is not None else None,
+                    "Y (m)": round(n.y, 2) if n.y is not None else None,
+                    "Z (m)": round(n.z, 2) if n.z is not None else None,
+                    "Presión (mca)": round(n.presion_mca, 2) if n.presion_mca is not None else None,
                     "Aparato": n.tipo_aparato or "-",
                     "Válvula": f"{n.valvula_tipo} ({n.valvula_apertura}%)" if n.valvula_tipo else "-"
                 })
-            st.dataframe(pd.DataFrame(datos_nodos), use_container_width=True, hide_index=True)
+            st.dataframe(
+                pd.DataFrame(datos_nodos),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", format="%d"),
+                    "X (m)": st.column_config.NumberColumn("X (m)", format="%.2f"),
+                    "Y (m)": st.column_config.NumberColumn("Y (m)", format="%.2f"),
+                    "Z (m)": st.column_config.NumberColumn("Z (m)", format="%.2f"),
+                    "Presión (mca)": st.column_config.NumberColumn("Presión (mca)", format="%.2f"),
+                }
+            )
         
         with tab4:
             datos_tubos = []
             for t in red.tuberias.values():
+                # Calcular Re y f si están disponibles
+                # Si no están calculados, usar valores por defecto
+                Re = t.f_friccion * 0  # Placeholder - en tu modelo deberías calcularlo
+                f = t.f_friccion if hasattr(t, 'f_friccion') else 0.02
+                
                 datos_tubos.append({
                     "ID": t.id,
                     "Inicio": t.nodo_inicio,
                     "Fin": t.nodo_fin,
                     "Longitud (m)": round(t.longitud_m, 2),
                     "Diam. Nom.": t.diametro_nominal_pulg,
+                    "DI (mm)": round(t.diametro_mm, 2),
                     "Caudal (L/s)": round(t.caudal_lps, 3),
                     "Vel (m/s)": round(t.velocidad_ms, 2),
-                    "Pérdida (mca)": round(t.perdida_mca, 3)
+                    "Re": round(Re, 0) if Re else None,
+                    "f": round(f, 4) if f else None,
+                    "Pérdida (mca)": round(t.perdida_mca, 4)
                 })
-            st.dataframe(pd.DataFrame(datos_tubos), use_container_width=True, hide_index=True)
+            
+            st.dataframe(
+                pd.DataFrame(datos_tubos),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", format="%d"),
+                    "Longitud (m)": st.column_config.NumberColumn("Longitud (m)", format="%.2f"),
+                    "DI (mm)": st.column_config.NumberColumn("DI (mm)", format="%.2f"),
+                    "Caudal (L/s)": st.column_config.NumberColumn("Caudal (L/s)", format="%.3f"),
+                    "Vel (m/s)": st.column_config.NumberColumn("Vel (m/s)", format="%.2f"),
+                    "Re": st.column_config.NumberColumn("Re", format="%.0f"),
+                    "f": st.column_config.NumberColumn("f", format="%.4f"),
+                    "Pérdida (mca)": st.column_config.NumberColumn("Pérdida (mca)", format="%.4f"),
+                }
+            )
         
         with tab5:
             datos_acc = []
@@ -1249,6 +1283,7 @@ if st.session_state.red is not None:
                 })
             st.dataframe(pd.DataFrame(datos_acc), use_container_width=True, hide_index=True)
         
+        # ===== PESTAÑA 6: MATERIALES =====
         with tab6:
             st.markdown("### 📏 Tuberías PVC")
             longitudes = {}
@@ -1256,34 +1291,123 @@ if st.session_state.red is not None:
                 diam = t.diametro_nominal_pulg
                 longitudes[diam] = longitudes.get(diam, 0) + t.longitud_m
             
-            tubos_data, total_tramos = [], 0
+            tubos_data = []
+            total_tramos = 0
             for diam in sorted(longitudes.keys(), key=lambda x: diametro_a_numero(x)):
                 tramos = int(math.ceil(longitudes[diam] / 6.0))
                 total_tramos += tramos
                 tubos_data.append({
-                    "Diámetro": diam, 
-                    "Longitud (m)": round(longitudes[diam], 2), 
+                    "Diámetro": diam,
+                    "Longitud (m)": round(longitudes[diam], 2),
                     "Tubos 6m": tramos
                 })
             st.dataframe(pd.DataFrame(tubos_data), use_container_width=True, hide_index=True)
             
+            st.markdown("---")
             st.markdown("### 🔧 Accesorios detectados")
-            acc_data = {}
-            for a in red.accesorios:
-                acc_data[a.tipo] = acc_data.get(a.tipo, 0) + 1
-            st.dataframe(
-                pd.DataFrame([
-                    {"Accesorio": k.replace("_", " "), "Cantidad": v} 
-                    for k, v in acc_data.items()
-                ]), 
-                use_container_width=True, 
-                hide_index=True
-            )
             
+            # ==========================================
+            # TABLA 1: Tees, Codos y Válvulas
+            # ==========================================
+            st.markdown("#### Tees, Codos y Válvulas")
+            
+            accesorios_principales = {}
+            reducciones = {}
+            
+            for a in red.accesorios:
+                # Determinar diámetro del accesorio
+                diam = "N/A"
+                for t in red.tuberias.values():
+                    if t.nodo_inicio == a.nodo_id or t.nodo_fin == a.nodo_id:
+                        diam = t.diametro_nominal_pulg
+                        break
+                
+                if "Reduccion" in a.tipo:
+                    # Reducciones: guardar combinación de diámetros
+                    diametros_conectados = []
+                    for t in red.tuberias.values():
+                        if t.nodo_inicio == a.nodo_id or t.nodo_fin == a.nodo_id:
+                            diametros_conectados.append(t.diametro_nominal_pulg)
+                    if len(diametros_conectados) >= 2:
+                        d1, d2 = diametros_conectados[0], diametros_conectados[1]
+                        # Ordenar para mostrar siempre de menor a mayor
+                        if diametro_a_numero(d1) > diametro_a_numero(d2):
+                            d1, d2 = d2, d1
+                        clave = f"{d1} → {d2}"
+                        reducciones[clave] = reducciones.get(clave, 0) + 1
+                    else:
+                        reducciones[f"{diam} → ?"] = reducciones.get(f"{diam} → ?", 0) + 1
+                else:
+                    # Tees, Codos y Válvulas
+                    nombre = a.tipo.replace("_", " ")
+                    if "Valvula" in nombre:
+                        nombre = nombre.replace("Valvula ", "Válvula ")
+                    clave = (nombre, diam)
+                    accesorios_principales[clave] = accesorios_principales.get(clave, 0) + 1
+            
+            # Tabla 1: Tees, Codos y Válvulas
+            if accesorios_principales:
+                data_principales = []
+                for (nombre, diam), cant in sorted(accesorios_principales.items(), key=lambda x: x[0][0]):
+                    data_principales.append({
+                        "Accesorio": nombre,
+                        "DN": diam,
+                        "Cantidad": cant
+                    })
+                st.dataframe(
+                    pd.DataFrame(data_principales),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No se detectaron Tees, Codos o Válvulas")
+            
+            st.markdown("---")
+            
+            # ==========================================
+            # TABLA 2: Reducciones
+            # ==========================================
+            st.markdown("#### Reducciones (Cambios de Diámetro)")
+            
+            if reducciones:
+                data_reducciones = []
+                for combinacion, cant in sorted(reducciones.items(), key=lambda x: x[0]):
+                    data_reducciones.append({
+                        "Reducción": combinacion,
+                        "Cantidad": cant
+                    })
+                st.dataframe(
+                    pd.DataFrame(data_reducciones),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No se detectaron Reducciones (cambios de diámetro)")
+            
+            st.markdown("---")
+            
+            # ==========================================
+            # CONSUMIBLES
+            # ==========================================
             st.markdown("### 🧴 Consumibles (Basado en Uniones + 10% Seguridad)")
-            uniones_acc = sum([3 if 'Tee' in k else 2 for k, v in acc_data.items() for _ in range(v)])
+            
+            # Calcular uniones de tuberías
             uniones_tubos = sum([max(0, math.ceil(t.longitud_m / 6.0) - 1) for t in red.tuberias.values()])
-            uniones_estimadas = int((uniones_acc + uniones_tubos) * 1.10)
+            
+            # Calcular uniones de accesorios principales
+            uniones_acc_principales = 0
+            for (nombre, diam), cant in accesorios_principales.items():
+                if "Tee" in nombre:
+                    uniones_acc_principales += cant * 3
+                elif "Codo" in nombre:
+                    uniones_acc_principales += cant * 2
+                elif "Válvula" in nombre:
+                    uniones_acc_principales += cant * 2
+            
+            # Calcular uniones de reducciones
+            uniones_reducciones = sum([cant * 2 for cant in reducciones.values()])
+            
+            uniones_estimadas = int((uniones_tubos + uniones_acc_principales + uniones_reducciones) * 1.10)
             
             galones_pegamento = max(0.25, uniones_estimadas / 150)
             galones_limpiador = max(0.25, uniones_estimadas / 250)
