@@ -1271,17 +1271,43 @@ if st.session_state.red is not None:
                 }
             )
         
+        # ===== PESTAÑA 5: ACCESORIOS =====
         with tab5:
+            st.subheader("🔧 Accesorios detectados en la red")
+            
             datos_acc = []
             for a in red.accesorios:
+                # Determinar diámetro del accesorio
+                diam = "N/A"
+                for t in red.tuberias.values():
+                    if t.nodo_inicio == a.nodo_id or t.nodo_fin == a.nodo_id:
+                        diam = t.diametro_nominal_pulg
+                        break
+                
+                # Formatear nombre del accesorio
+                nombre = a.tipo.replace("_", " ")
+                if "Valvula" in nombre:
+                    nombre = nombre.replace("Valvula ", "Válvula ")
+                
                 datos_acc.append({
                     "ID": a.id,
-                    "Tipo": a.tipo.replace("_", " "),
+                    "Tipo": nombre,
                     "Nodo": a.nodo_id,
-                    "Leq (m)": round(a.longitud_equivalente_m, 2),
-                    "Pérdida (mca)": round(a.perdida_mca, 4)
+                    "DN": diam,
+                    "Leq (m)": round(a.longitud_equivalente_m, 2) if a.longitud_equivalente_m else 0.0,
+                    "Pérdida (mca)": round(a.perdida_mca, 4) if a.perdida_mca else 0.0
                 })
-            st.dataframe(pd.DataFrame(datos_acc), use_container_width=True, hide_index=True)
+            
+            st.dataframe(
+                pd.DataFrame(datos_acc),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", format="%d"),
+                    "Leq (m)": st.column_config.NumberColumn("Longitud Equivalente (m)", format="%.2f"),
+                    "Pérdida (mca)": st.column_config.NumberColumn("Pérdida (mca)", format="%.4f"),
+                }
+            )
         
         # ===== PESTAÑA 6: MATERIALES =====
         with tab6:
