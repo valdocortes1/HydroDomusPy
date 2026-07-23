@@ -143,12 +143,11 @@ def detectar_sincronizacion_3d():
                     st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
                 
                 st.session_state.config_actualizada = True
-                st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
                 
-                # Guardar en session_state para que la tabla lo lea
+                # 👇 GUARDAR EN SESSION_STATE PARA QUE LA TABLA LO LEA
                 st.session_state.config_3d = config
                 
-                # Actualizar la página
+                # 👇 FORZAR RECARGA COMPLETA PARA ACTUALIZAR LA TABLA
                 st.rerun()
                 return True
                 
@@ -1154,12 +1153,24 @@ if st.session_state.red is not None:
                 type=["json"],
                 key="config_uploader"
             )
-        
+
+        if st.button("🔄 Recargar desde interfaz 3D", use_container_width=True, key="btn_reload_3d"):
+            if 'config_3d' in st.session_state and st.session_state.config_3d:
+                st.rerun()
+            else:
+                st.warning("No hay configuración de la interfaz 3D para cargar")
+        # ==========================================
+        # 🔧 LEER CONFIGURACIÓN DESDE SESSION_STATE
+        # ==========================================
         # Verificar si hay una configuración recién sincronizada
         if 'config_3d' in st.session_state and st.session_state.config_3d:
             config_3d = st.session_state.config_3d
             # Usar la configuración de la interfaz 3D
             nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, config_3d)
+            # 👇 IMPORTANTE: Limpiar después de leer para evitar recargas infinitas
+            # st.session_state.config_3d = None  # No limpiar aquí para que la tabla lo use
+            # Mostrar mensaje de éxito
+            st.success("✅ Tabla actualizada con la configuración de la interfaz 3D")
         else:
             # Usar el estado actual de la red
             nodos_ids = list(red.nodos.keys())
