@@ -196,8 +196,9 @@ st.set_page_config(
 
 # Inicializar el tema en session_state si no existe
 if 'tema' not in st.session_state:
-    # Intenta obtener el tema del sistema/configuración, o usa 'dark' por defecto
-    st.session_state.tema = st.get_option("theme.base") or "dark"
+    # Intentar obtener el tema del sistema/configuración, o usa 'dark' por defecto
+    tema_sistema = st.get_option("theme.base")
+    st.session_state.tema = tema_sistema if tema_sistema else "dark"
 
 # Crear columnas para el título y el selector
 col_titulo, col_selector = st.columns([3, 1])
@@ -219,8 +220,11 @@ with col_selector:
     # Si el usuario cambia el tema, actualizamos el estado y recargamos la página
     if tema_seleccionado != st.session_state.tema:
         st.session_state.tema = tema_seleccionado
-        # Forzamos la recarga para aplicar el nuevo tema
+        # ⚠️ Forzar recarga completa con st.rerun()
         st.rerun()
+
+# Ahora aplicamos los estilos con el tema seleccionado
+apply_enhanced_styles()
 
 
 # ================================================================================
