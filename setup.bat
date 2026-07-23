@@ -7,7 +7,7 @@ echo ============================================================
 echo.
 
 :: Verificar Python
-echo [1/4] Verificando Python...
+echo [1/5] Verificando Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ Python no está instalado.
@@ -22,18 +22,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Mostrar versión de Python
 for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
 echo ✅ Python encontrado: %PYTHON_VERSION%
 
-:: Verificar versión de Python (3.8+)
 python -c "import sys; exit(0) if sys.version_info >= (3,8) else exit(1)" >nul 2>&1
 if errorlevel 1 (
     echo ❌ Se requiere Python 3.8 o superior.
     echo Tu version: %PYTHON_VERSION%
-    echo.
-    echo Por favor, actualiza Python desde:
-    echo https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
@@ -41,30 +36,49 @@ if errorlevel 1 (
 echo ✅ Version de Python compatible.
 echo.
 
-:: Verificar pip
-echo [2/4] Verificando pip...
-pip --version >nul 2>&1
-if errorlevel 1 (
-    echo ❌ pip no esta instalado.
-    echo Instalando pip...
-    python -m ensurepip --upgrade
-    if errorlevel 1 (
-        echo ❌ Error al instalar pip.
-        echo.
-        pause
-        exit /b 1
+:: Crear entorno virtual
+echo [2/5] Creando entorno virtual...
+if exist venv (
+    echo ⚠️ El entorno virtual ya existe.
+    choice /C SN /M "¿Deseas recrearlo? (S/N)"
+    if errorlevel 2 (
+        echo Usando entorno existente...
+    ) else (
+        echo Eliminando entorno anterior...
+        rmdir /s /q venv
+        echo Creando nuevo entorno...
+        python -m venv venv
     )
+) else (
+    echo Creando entorno virtual...
+    python -m venv venv
 )
-echo ✅ pip disponible.
+echo ✅ Entorno virtual creado.
+echo.
+
+:: Activar entorno virtual
+echo [3/5] Activando entorno virtual...
+call venv\Scripts\activate.bat
+if errorlevel 1 (
+    echo ❌ Error al activar el entorno virtual.
+    echo.
+    pause
+    exit /b 1
+)
+echo ✅ Entorno virtual activado.
+echo.
+
+:: Actualizar pip
+echo [4/5] Actualizando pip...
+python -m pip install --upgrade pip
 echo.
 
 :: Instalar dependencias
-echo [3/4] Instalando dependencias...
+echo [5/5] Instalando dependencias...
 echo Esto puede tomar unos minutos...
 
 if exist requirements.txt (
     echo Instalando desde requirements.txt...
-    pip install --upgrade pip
     pip install -r requirements.txt
     if errorlevel 1 (
         echo ❌ Error al instalar las dependencias.
@@ -90,13 +104,10 @@ echo ✅ Dependencias instaladas correctamente.
 echo.
 
 :: Verificar instalación
-echo [4/4] Verificando instalacion...
+echo Verificando instalacion...
 python -c "import streamlit, ezdxf, numpy, networkx, scipy, plotly, openpyxl, pandas" >nul 2>&1
 if errorlevel 1 (
     echo ❌ Algunas dependencias no se instalaron correctamente.
-    echo.
-    echo Puedes intentar instalarlas manualmente:
-    echo pip install streamlit ezdxf numpy networkx scipy plotly openpyxl pandas
     echo.
     pause
     exit /b 1
@@ -119,7 +130,8 @@ if errorlevel 1 (
     echo ❌ Error al ejecutar la aplicacion.
     echo.
     echo Puedes intentar ejecutarla manualmente:
-    echo streamlit run app.py
+    echo 1. Activa el entorno: venv\Scripts\activate
+    echo 2. Ejecuta: streamlit run app.py
     echo.
     pause
 )
