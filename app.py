@@ -39,276 +39,289 @@ st.set_page_config(
 )
 
 # ================================================================================
-# ESTILOS CSS PERSONALIZADOS
+# ESTILOS CSS PERSONALIZADOS (Optimizados para modo oscuro/claro)
 # ================================================================================
 def apply_custom_styles():
     """Aplica estilos CSS personalizados para una interfaz profesional"""
-    st.markdown("""
+    
+    # Detectar tema actual
+    theme = st.get_option("theme.base")
+    is_dark = theme == "dark"
+    
+    # Colores según tema
+    if is_dark:
+        bg_primary = "#0f2027"
+        bg_secondary = "#1a2533"
+        bg_card = "#1e2a3a"
+        text_primary = "#ffffff"
+        text_secondary = "rgba(255,255,255,0.7)"
+        text_muted = "rgba(255,255,255,0.5)"
+        border_color = "rgba(255,255,255,0.08)"
+        shadow_color = "rgba(0,0,0,0.3)"
+        header_grad = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
+    else:
+        bg_primary = "#f0f2f6"
+        bg_secondary = "#ffffff"
+        bg_card = "#ffffff"
+        text_primary = "#1a1a2e"
+        text_secondary = "rgba(0,0,0,0.7)"
+        text_muted = "rgba(0,0,0,0.5)"
+        border_color = "rgba(0,0,0,0.08)"
+        shadow_color = "rgba(0,0,0,0.1)"
+        header_grad = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
+    
+    st.markdown(f"""
     <style>
         /* Ocultar sidebar */
-        .stSidebar {
+        .stSidebar {{
             display: none !important;
-        }
+        }}
+        
+        /* Estilo general */
+        .stApp {{
+            background: {bg_primary};
+        }}
         
         /* Header superior */
-        .main-header {
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            padding: 1.2rem 2rem;
+        .main-header {{
+            background: {header_grad};
+            padding: 1rem 2rem;
             border-radius: 12px;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
+            box-shadow: 0 4px 20px {shadow_color};
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }}
         
-        .main-header .logo-section {
+        .main-header .logo-section {{
             display: flex;
             align-items: center;
             gap: 1rem;
-        }
+        }}
         
-        .main-header .logo-icon {
-            font-size: 2.8rem;
+        .main-header .logo-icon {{
+            font-size: 2.5rem;
             background: rgba(255,255,255,0.1);
-            padding: 0.3rem 1rem;
-            border-radius: 12px;
-        }
+            padding: 0.2rem 1rem;
+            border-radius: 10px;
+        }}
         
-        .main-header .title {
-            color: white;
-            font-size: 1.8rem;
+        .main-header .title {{
+            color: {text_primary};
+            font-size: 1.6rem;
             font-weight: 700;
             margin: 0;
             letter-spacing: -0.5px;
-        }
+        }}
         
-        .main-header .subtitle {
+        .main-header .subtitle {{
             color: rgba(255,255,255,0.7);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             margin: 0;
-        }
+        }}
         
-        .main-header .status-section {
+        .main-header .status-section {{
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1.2rem;
             background: rgba(255,255,255,0.08);
-            padding: 0.5rem 1.5rem;
+            padding: 0.4rem 1.2rem;
             border-radius: 10px;
-        }
-        
-        .main-header .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: white;
-            font-size: 0.85rem;
-        }
-        
-        .main-header .status-badge .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .dot-green { background: #2ecc71; }
-        .dot-yellow { background: #f1c40f; }
-        .dot-red { background: #e74c3c; }
-        .dot-gray { background: #7f8c8d; }
-        
-        /* Barra de herramientas */
-        .toolbar {
-            background: #1e2a3a;
-            padding: 0.8rem 1.5rem;
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            display: flex;
             flex-wrap: wrap;
-            gap: 0.8rem;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
+        }}
         
-        .toolbar .tool-group {
+        .main-header .status-badge {{
             display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .toolbar .divider {
-            width: 1px;
-            height: 30px;
-            background: rgba(255,255,255,0.15);
-            margin: 0 0.5rem;
-        }
-        
-        /* Botones de acción */
-        .action-btn {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            padding: 0.4rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-        }
+            color: {text_primary};
+            font-size: 0.8rem;
+        }}
         
-        .action-btn:hover {
-            background: rgba(255,255,255,0.15);
-            border-color: rgba(255,255,255,0.2);
-            transform: translateY(-1px);
-        }
+        .main-header .status-badge .dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }}
         
-        .action-btn.primary {
-            background: #3498db;
-            border-color: #3498db;
-        }
+        .dot-green {{ background: #2ecc71; }}
+        .dot-yellow {{ background: #f1c40f; }}
+        .dot-red {{ background: #e74c3c; }}
+        .dot-gray {{ background: #7f8c8d; }}
         
-        .action-btn.primary:hover {
-            background: #2980b9;
-            border-color: #2980b9;
-        }
+        /* Barra de herramientas */
+        .toolbar {{
+            background: {bg_secondary};
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 1.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+            box-shadow: 0 2px 10px {shadow_color};
+            border: 1px solid {border_color};
+        }}
         
-        .action-btn.success {
-            background: #27ae60;
-            border-color: #27ae60;
-        }
+        .toolbar .tool-group {{
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }}
         
-        .action-btn.success:hover {
-            background: #229954;
-            border-color: #229954;
-        }
+        .toolbar .divider {{
+            width: 1px;
+            height: 28px;
+            background: {border_color};
+            margin: 0 0.4rem;
+        }}
         
-        .action-btn.warning {
-            background: #f39c12;
-            border-color: #f39c12;
-        }
-        
-        .action-btn.warning:hover {
-            background: #d68910;
-            border-color: #d68910;
-        }
-        
-        .action-btn.danger {
-            background: #e74c3c;
-            border-color: #e74c3c;
-        }
-        
-        .action-btn.danger:hover {
-            background: #c0392b;
-            border-color: #c0392b;
-        }
+        .toolbar .tool-label {{
+            color: {text_secondary};
+            font-size: 0.8rem;
+        }}
         
         /* Tarjetas de métricas */
-        .metric-card {
-            background: #1e2a3a;
-            padding: 1rem 1.5rem;
+        .metric-card {{
+            background: {bg_secondary};
+            padding: 0.8rem 1.2rem;
             border-radius: 10px;
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid {border_color};
             transition: all 0.3s ease;
-        }
+            box-shadow: 0 2px 8px {shadow_color};
+        }}
         
-        .metric-card:hover {
-            border-color: rgba(52,152,219,0.3);
+        .metric-card:hover {{
+            border-color: #3498db;
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
+            box-shadow: 0 4px 15px {shadow_color};
+        }}
         
-        .metric-card .metric-value {
-            font-size: 1.8rem;
+        .metric-card .metric-value {{
+            font-size: 1.6rem;
             font-weight: 700;
             color: #3498db;
-        }
+        }}
         
-        .metric-card .metric-label {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.6);
+        .metric-card .metric-label {{
+            font-size: 0.75rem;
+            color: {text_secondary};
             margin-top: 0.2rem;
-        }
+        }}
         
         /* Secciones de configuración */
-        .config-section {
-            background: #1a2533;
-            padding: 1.5rem;
+        .config-section {{
+            background: {bg_secondary};
+            padding: 1.2rem;
             border-radius: 12px;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
+            margin-bottom: 1.2rem;
+            border: 1px solid {border_color};
+            box-shadow: 0 2px 8px {shadow_color};
+        }}
         
-        .config-section .section-title {
-            font-size: 1.1rem;
+        .config-section .section-title {{
+            font-size: 1rem;
             font-weight: 600;
             color: #3498db;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-        }
+        }}
         
         /* Personalizar pestañas */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 0.5rem;
-            background: #1a2533;
-            padding: 0.5rem;
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 0.3rem;
+            background: {bg_secondary};
+            padding: 0.4rem;
             border-radius: 10px;
-        }
+            border: 1px solid {border_color};
+        }}
         
-        .stTabs [data-baseweb="tab"] {
-            padding: 0.6rem 1.2rem;
+        .stTabs [data-baseweb="tab"] {{
+            padding: 0.5rem 1rem;
             border-radius: 8px;
             font-weight: 500;
-            font-size: 0.9rem;
-        }
+            font-size: 0.85rem;
+            color: {text_secondary};
+        }}
         
-        .stTabs [data-baseweb="tab"]:hover {
-            background: rgba(255,255,255,0.05);
-        }
+        .stTabs [data-baseweb="tab"]:hover {{
+            background: rgba(52,152,219,0.1);
+        }}
         
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
             background: #3498db;
             color: white;
-        }
+        }}
         
         /* File uploader */
-        .upload-area {
+        .upload-area {{
             border: 2px dashed rgba(52,152,219,0.3);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             text-align: center;
             transition: all 0.3s ease;
-        }
+            background: {bg_secondary};
+        }}
         
-        .upload-area:hover {
+        .upload-area:hover {{
             border-color: #3498db;
             background: rgba(52,152,219,0.05);
-        }
+        }}
+        
+        /* Textos */
+        .text-primary {{
+            color: {text_primary};
+        }}
+        
+        .text-secondary {{
+            color: {text_secondary};
+        }}
+        
+        .text-muted {{
+            color: {text_muted};
+        }}
+        
+        /* Botones en toolbar */
+        .stButton > button {{
+            font-size: 0.8rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 8px;
+        }}
+        
+        /* Inputs en toolbar */
+        .stSelectbox > div {{
+            min-width: 120px;
+        }}
         
         /* Responsive */
-        @media (max-width: 768px) {
-            .main-header {
+        @media (max-width: 768px) {{
+            .main-header {{
                 flex-direction: column;
                 text-align: center;
-                gap: 1rem;
-            }
-            .main-header .logo-section {
+                gap: 0.8rem;
+            }}
+            .main-header .logo-section {{
                 flex-direction: column;
-            }
-            .toolbar {
+            }}
+            .toolbar {{
                 flex-direction: column;
                 align-items: stretch;
-            }
-            .toolbar .divider {
+            }}
+            .toolbar .divider {{
                 display: none;
-            }
-        }
+            }}
+            .main-header .status-section {{
+                justify-content: center;
+            }}
+        }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -896,7 +909,6 @@ class DXFReader:
     def extraer_lineas(self, layers):
         """
         Extrae todas las líneas y polilíneas de los layers seleccionados.
-        CORREGIDO: Manejo correcto de points() con context manager
         Soporta: LINE, LWPOLYLINE, POLYLINE, 3DPOLYLINE
         """
         lineas = []
@@ -919,9 +931,7 @@ class DXFReader:
             if entity.dxf.layer not in layers_set:
                 continue
             
-            # ============================================================
-            # 1. LÍNEAS (LINE)
-            # ============================================================
+            # LÍNEAS (LINE)
             if dxftype == 'LINE':
                 s = entity.dxf.start
                 e = entity.dxf.end
@@ -932,14 +942,11 @@ class DXFReader:
                 stats['LINE'] += 1
                 stats['total_segmentos'] += 1
             
-            # ============================================================
-            # 2. POLILÍNEAS LIGERAS 2D (LWPOLYLINE)
-            # ============================================================
+            # POLILÍNEAS LIGERAS 2D (LWPOLYLINE)
             elif dxftype == 'LWPOLYLINE':
                 elevation = entity.dxf.elevation if hasattr(entity.dxf, 'elevation') else 0
                 pts = []
                 
-                # 🔧 FORMA CORRECTA: Usar context manager con 'with'
                 try:
                     with entity.points() as p_list:
                         for p in p_list:
@@ -948,7 +955,6 @@ class DXFReader:
                             else:
                                 pts.append((p[0], p[1], elevation))
                 except Exception as e:
-                    # Fallback: método alternativo
                     try:
                         for p in entity.points():
                             if len(p) >= 3:
@@ -976,13 +982,10 @@ class DXFReader:
                     
                     stats['LWPOLYLINE'] += 1
             
-            # ============================================================
-            # 3. POLILÍNEAS 3D (POLYLINE / 3DPOLYLINE)
-            # ============================================================
+            # POLILÍNEAS 3D (POLYLINE / 3DPOLYLINE)
             elif dxftype in ('POLYLINE', '3DPOLYLINE'):
                 pts = []
                 
-                # 🔧 FORMA CORRECTA: Usar context manager con 'with'
                 try:
                     with entity.points() as p_list:
                         for p in p_list:
@@ -991,7 +994,6 @@ class DXFReader:
                             else:
                                 pts.append((p[0], p[1], 0))
                 except Exception as e:
-                    # Fallback: intentar con vertices() para POLYLINE 3D
                     try:
                         for vertex in entity.vertices():
                             loc = vertex.dxf.location
@@ -1887,11 +1889,7 @@ function actualizarResumen(){{
     <strong>💧 Caudal probable:</strong> ${{(0.2 * Math.sqrt(totalUG) + 0.5).toFixed(2)}} L/s`;
 }}
 
-// ============================================================
-// ✅ CORRECCIÓN: Guardar configuración con verificación de null
-// ============================================================
 function guardar(){{
-    // ✅ Verificar si entradaId es null o undefined (no 0)
     if(entradaId === null || entradaId === undefined){{
         alert('⚠️ Seleccione un nodo de entrada antes de guardar');
         return;
@@ -1916,7 +1914,7 @@ actualizarGrafico();actualizarResumen();
     return html
 
 # ================================================================================
-# INTERFAZ PRINCIPAL
+# INTERFAZ PRINCIPAL DE STREAMLIT
 # ================================================================================
 def main():
     """Función principal de la aplicación con interfaz de pantalla completa"""
@@ -1957,10 +1955,32 @@ def main():
         st.session_state.unidad_dibujo = "mm"
     if 'factor_conversion' not in st.session_state:
         st.session_state.factor_conversion = 1000
+    if 'show_config' not in st.session_state:
+        st.session_state.show_config = False
 
     # ============================================================
     # HEADER SUPERIOR
     # ============================================================
+    # Determinar estado
+    if st.session_state.red is None:
+        status_color = "dot-gray"
+        status_text = "⏳ Sin red"
+        nodos_count = 0
+        tuberias_count = 0
+        entrada_text = ""
+    elif st.session_state.red.nodo_entrada_id is None:
+        status_color = "dot-yellow"
+        status_text = "⚙️ Sin entrada"
+        nodos_count = len(st.session_state.red.nodos)
+        tuberias_count = len(st.session_state.red.tuberias)
+        entrada_text = ""
+    else:
+        status_color = "dot-green"
+        status_text = "✅ Red lista"
+        nodos_count = len(st.session_state.red.nodos)
+        tuberias_count = len(st.session_state.red.tuberias)
+        entrada_text = f"🚰 Entrada: Nodo {st.session_state.red.nodo_entrada_id}"
+    
     st.markdown(f"""
     <div class="main-header">
         <div class="logo-section">
@@ -1972,16 +1992,16 @@ def main():
         </div>
         <div class="status-section">
             <span class="status-badge">
-                <span class="dot {get_status_color(st.session_state.red)}"></span>
-                {get_status_text(st.session_state.red)}
+                <span class="dot {status_color}"></span>
+                {status_text}
             </span>
             <span class="status-badge">
-                🔢 {len(st.session_state.red.nodos) if st.session_state.red else 0} nodos
+                🔢 {nodos_count} nodos
             </span>
             <span class="status-badge">
-                🔗 {len(st.session_state.red.tuberias) if st.session_state.red else 0} tuberías
+                🔗 {tuberias_count} tuberías
             </span>
-            {f'<span class="status-badge">🚰 Entrada: Nodo {st.session_state.red.nodo_entrada_id}</span>' if st.session_state.red and st.session_state.red.nodo_entrada_id is not None else ''}
+            {f'<span class="status-badge">{entrada_text}</span>' if entrada_text else ''}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1992,27 +2012,31 @@ def main():
     st.markdown("""
     <div class="toolbar">
         <div class="tool-group">
-            <span style="color:rgba(255,255,255,0.6);font-size:0.8rem;">📁</span>
+            <span style="color:var(--text-secondary);font-size:0.8rem;">📁</span>
     """, unsafe_allow_html=True)
     
     # File uploader en línea
-    dxf_file = st.file_uploader(
-        "Cargar DXF",
-        type=['dxf'],
-        label_visibility="collapsed",
-        key="dxf_uploader_top"
-    )
+    col_upload, col_units, col_spacer = st.columns([2, 1.5, 0.5])
     
-    # Selector de unidades
-    unidad_seleccionada = st.selectbox(
-        "Unidades",
-        options=list(UNIDADES_DIBUJO.keys()),
-        format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']}",
-        key="unidad_select_top",
-        label_visibility="collapsed"
-    )
-    st.session_state.unidad_dibujo = unidad_seleccionada
-    st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
+    with col_upload:
+        dxf_file = st.file_uploader(
+            "Cargar DXF",
+            type=['dxf'],
+            label_visibility="collapsed",
+            key="dxf_uploader_top",
+            help="Seleccione un archivo DXF del plano hidrosanitario"
+        )
+    
+    with col_units:
+        unidad_seleccionada = st.selectbox(
+            "Unidades",
+            options=list(UNIDADES_DIBUJO.keys()),
+            format_func=lambda x: f"{UNIDADES_DIBUJO[x]['icono']} {UNIDADES_DIBUJO[x]['nombre']}",
+            key="unidad_select_top",
+            label_visibility="collapsed"
+        )
+        st.session_state.unidad_dibujo = unidad_seleccionada
+        st.session_state.factor_conversion = UNIDADES_DIBUJO[unidad_seleccionada]["factor"]
     
     st.markdown("""
         <span class="divider"></span>
@@ -2020,11 +2044,11 @@ def main():
         <div class="tool-group">
     """, unsafe_allow_html=True)
     
-    # Botones de acción rápidos
-    col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
+    # Botones de acción
+    col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns([1, 1, 1, 1, 0.8])
     
     with col_btn1:
-        if st.button("🚀 Construir Red", type="primary", use_container_width=True, key="btn_build"):
+        if st.button("🚀 Construir Red", use_container_width=True, key="btn_build"):
             if dxf_file is not None:
                 procesar_dxf(dxf_file)
             else:
@@ -2056,12 +2080,89 @@ def main():
             st.session_state.red = None
             st.session_state.analyzer = None
             st.session_state.resultados = None
+            st.session_state.show_config = False
             st.rerun()
     
     st.markdown("""
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # ============================================================
+    # PANEL DE CONFIGURACIÓN (Parámetros)
+    # ============================================================
+    st.markdown("""
+    <div class="config-section">
+        <div class="section-title">⚙️ Parámetros de Cálculo</div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        presion = st.number_input(
+            "Presión entrada (mca)",
+            value=st.session_state.presion_entrada,
+            min_value=1.0,
+            max_value=50.0,
+            step=0.5,
+            help="Presión disponible en el nodo de entrada",
+            key="presion_main"
+        )
+        st.session_state.presion_entrada = presion
+    
+    with col2:
+        tipo_ocup = st.selectbox(
+            "Tipo de edificación",
+            options=list(TIPOS_OCUPACION_AGUA.keys()),
+            index=list(TIPOS_OCUPACION_AGUA.keys()).index(st.session_state.tipo_ocupacion) 
+                 if st.session_state.tipo_ocupacion in TIPOS_OCUPACION_AGUA else 0,
+            help="Afecta el cálculo del caudal máximo probable",
+            key="tipo_ocup_main"
+        )
+        st.session_state.tipo_ocupacion = tipo_ocup
+        # Mostrar fórmula del tipo seleccionado
+        info_ocup = TIPOS_OCUPACION_AGUA.get(tipo_ocup, {})
+        st.caption(f"📐 {info_ocup.get('formula', '')}")
+    
+    with col3:
+        col_vel1, col_vel2 = st.columns(2)
+        with col_vel1:
+            vel_min = st.number_input(
+                "Vel. mín (m/s)",
+                value=st.session_state.vel_min,
+                min_value=0.1,
+                max_value=5.0,
+                step=0.1,
+                help="Velocidad mínima permitida",
+                key="vel_min_main"
+            )
+            st.session_state.vel_min = vel_min
+        with col_vel2:
+            vel_max = st.number_input(
+                "Vel. máx (m/s)",
+                value=st.session_state.vel_max,
+                min_value=0.5,
+                max_value=10.0,
+                step=0.1,
+                help="Velocidad máxima permitida",
+                key="vel_max_main"
+            )
+            st.session_state.vel_max = vel_max
+    
+    with col4:
+        restringir = st.checkbox("Restringir diámetro máximo", key="restringir_main")
+        if restringir:
+            diam_max = st.selectbox(
+                "Diámetro máximo",
+                options=list(DIAMETROS_PAVCO.keys()),
+                key="diam_max_main"
+            )
+            st.session_state.diametro_maximo = DIAMETROS_PAVCO[diam_max]
+        else:
+            st.session_state.diametro_maximo = None
+            st.caption("✅ Sin restricción")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # ============================================================
     # PROCESAR DXF
@@ -2081,22 +2182,6 @@ def main():
 # ================================================================================
 # FUNCIONES AUXILIARES DE INTERFAZ
 # ================================================================================
-def get_status_color(red):
-    """Determina el color del estado según la red"""
-    if red is None:
-        return "dot-gray"
-    if red.nodo_entrada_id is None:
-        return "dot-yellow"
-    return "dot-green"
-
-def get_status_text(red):
-    """Obtiene el texto del estado"""
-    if red is None:
-        return "⏳ Sin red"
-    if red.nodo_entrada_id is None:
-        return "⚙️ Sin entrada"
-    return "✅ Red lista"
-
 def procesar_dxf(dxf_file):
     """Procesa el archivo DXF y construye la red"""
     with st.spinner("🔄 Construyendo red..."):
@@ -2110,42 +2195,49 @@ def procesar_dxf(dxf_file):
             reader.set_log_callback(lambda msg, lvl: None)
             layers = reader.obtener_layers()
             
-            # Seleccionar layers en un diálogo
-            selected = st.multiselect(
-                "Seleccionar layers con tuberías:",
-                options=layers,
-                default=layers[:3] if len(layers) >= 3 else layers,
-                key="layer_selector_build"
-            )
+            if not layers:
+                st.error("❌ No se encontraron layers en el archivo DXF")
+                return
             
-            if selected:
-                lineas_raw = reader.extraer_lineas(selected)
-                if lineas_raw:
-                    factor = st.session_state.factor_conversion
-                    lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
-                    nodos_dict, tuberias = construir_red(lineas)
-                    
-                    red = RedHidraulica()
-                    for (x, y, z), nid in nodos_dict.items():
-                        red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
-                    for t in tuberias:
-                        red.agregar_tuberia(t)
-                    
-                    st.session_state.red = red
-                    
-                    if len(red.nodos) > 0:
-                        primer_nodo = list(red.nodos.keys())[0]
-                        red.nodo_entrada_id = primer_nodo
-                        red.nodos[primer_nodo].es_entrada = True
-                        ajustar_cotas_relativas(red)
-                    
-                    st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
-                    st.rerun()
-                else:
-                    st.error("❌ No se encontraron líneas en los layers seleccionados")
-            else:
-                st.warning("⚠️ Seleccione al menos un layer")
+            # Mostrar selector de layers
+            with st.expander("📋 Seleccionar layers", expanded=True):
+                selected = st.multiselect(
+                    "Seleccionar layers con tuberías:",
+                    options=layers,
+                    default=layers[:3] if len(layers) >= 3 else layers,
+                    key="layer_selector_build"
+                )
                 
+                if selected:
+                    if st.button("✅ Confirmar y Construir Red", type="primary"):
+                        with st.spinner("Construyendo red..."):
+                            lineas_raw = reader.extraer_lineas(selected)
+                            if lineas_raw:
+                                factor = st.session_state.factor_conversion
+                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=factor)
+                                nodos_dict, tuberias = construir_red(lineas)
+                                
+                                red = RedHidraulica()
+                                for (x, y, z), nid in nodos_dict.items():
+                                    red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
+                                for t in tuberias:
+                                    red.agregar_tuberia(t)
+                                
+                                st.session_state.red = red
+                                
+                                if len(red.nodos) > 0:
+                                    primer_nodo = list(red.nodos.keys())[0]
+                                    red.nodo_entrada_id = primer_nodo
+                                    red.nodos[primer_nodo].es_entrada = True
+                                    ajustar_cotas_relativas(red)
+                                
+                                st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
+                                st.rerun()
+                            else:
+                                st.error("❌ No se encontraron líneas en los layers seleccionados")
+                else:
+                    st.warning("⚠️ Seleccione al menos un layer")
+                    
         except Exception as e:
             st.error(f"❌ Error leyendo DXF: {e}")
         
@@ -2481,15 +2573,6 @@ def mostrar_resultados():
             st.metric("📊 Total accesorios", f"{total_acc}")
         else:
             st.info("Ejecute el análisis para ver la estimación de materiales")
-
-# ================================================================================
-# NOTA: Todas las clases y funciones del código original se mantienen aquí
-# Incluyendo: RedHidraulica, HydraulicAnalyzer, DXFReader, generar_html_config,
-# generate_3d_plot, generar_perfil_presiones, exportar_excel, etc.
-# ================================================================================
-
-# Por razones de espacio, las clases y funciones largas se mantienen
-# igual que en el código original. La diferencia está en la interfaz.
 
 # ================================================================================
 # EJECUTAR APLICACIÓN
