@@ -985,71 +985,55 @@ if st.session_state.red is not None:
     # OPCIÓN 2: TABLA MANUAL (alternativa)
     # ==========================================
     with st.expander("📋 Configuración Manual (Tabla)", expanded=False):
-        st.markdown("**Alternativa: Configure los nodos manualmente usando la tabla.**")
+        st.markdown("**Configure los nodos manualmente usando la tabla.**")
         
         col_load, col_save = st.columns([1, 1])
         
         with col_load:
+            # Cargar configuración desde archivo JSON
             config_file = st.file_uploader(
                 "📂 Cargar configuración (.json)", 
                 type=["json"],
                 key="config_uploader"
             )
             
-            # ==========================================
-            # 🔧 BOTÓN PARA CARGAR DESDE LA INTERFAZ 3D
-            # ==========================================
-            if st.button("📥 Cargar desde Interfaz 3D", use_container_width=True, key="cargar_3d"):
-                # Leer la configuración desde sessionStorage usando JavaScript
-                st.markdown("""
-                <script>
-                (function() {
-                    try {
-                        const configJson = sessionStorage.getItem('hydro_config_3d_sync');
-                        if (configJson) {
-                            const encoded = encodeURIComponent(configJson);
-                            const currentUrl = new URL(window.location.href);
-                            currentUrl.searchParams.set('cargar_3d', encoded);
-                            window.location.href = currentUrl.toString();
-                        } else {
-                            alert('No hay configuración guardada en la interfaz 3D. Primero guarda la configuración en la interfaz 3D.');
-                        }
-                    } catch(e) {
-                        alert('Error al leer la configuración: ' + e.message);
-                    }
-                })();
-                </script>
-                """, unsafe_allow_html=True)
-                st.info("🔄 Cargando configuración desde la interfaz 3D...")
-        
-        # ==========================================
-        # 🔧 LEER CONFIGURACIÓN DESDE SESSION_STATE
-        # ==========================================
-        # Verificar si hay una configuración recién sincronizada
-        if 'config_3d' in st.session_state and st.session_state.config_3d:
-            config_3d = st.session_state.config_3d
-            # Usar la configuración de la interfaz 3D
-            nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, config_3d)
-            # 👇 IMPORTANTE: Limpiar después de leer para evitar recargas infinitas
-            st.session_state.config_3d = None  # Limpiar para que no se use de nuevo
-            st.success("✅ Tabla actualizada con la configuración de la interfaz 3D")
-        else:
-            # Usar el estado actual de la red
-            nodos_ids = list(red.nodos.keys())
-            default_entrada_idx = 0
-            aparatos_list = [""] * len(nodos_ids)
-            valvulas_list = [""] * len(nodos_ids)
-            aperturas_list = [100.0] * len(nodos_ids)
-            
-            for i, nid in enumerate(nodos_ids):
-                nodo = red.nodos[nid]
-                aparatos_list[i] = nodo.tipo_aparato or ""
-                valvulas_list[i] = nodo.valvula_tipo or ""
-                aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
-                if nodo.es_entrada:
-                    default_entrada_idx = i
-
-
+            if config_file is not None:
+                try:
+                    loaded_config = json.load(config_file)
+                    st.success("✅ Configuración cargada exitosamente")
+                    # Usar la configuración cargada
+                    nodos_ids, default_entrada_idx, aparatos_list, valvulas_list, aperturas_list = actualizar_tabla_desde_config(red, loaded_config)
+                except Exception as e:
+                    st.error(f"Error cargando configuración: {e}")
+                    # Si hay error, usar el estado actual de la red
+                    nodos_ids = list(red.nodos.keys())
+                    default_entrada_idx = 0
+                    aparatos_list = [""] * len(nodos_ids)
+                    valvulas_list = [""] * len(nodos_ids)
+                    aperturas_list = [100.0] * len(nodos_ids)
+                    
+                    for i, nid in enumerate(nodos_ids):
+                        nodo = red.nodos[nid]
+                        aparatos_list[i] = nodo.tipo_aparato or ""
+                        valvulas_list[i] = nodo.valvula_tipo or ""
+                        aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
+                        if nodo.es_entrada:
+                            default_entrada_idx = i
+            else:
+                # Usar el estado actual de la red
+                nodos_ids = list(red.nodos.keys())
+                default_entrada_idx = 0
+                aparatos_list = [""] * len(nodos_ids)
+                valvulas_list = [""] * len(nodos_ids)
+                aperturas_list = [100.0] * len(nodos_ids)
+                
+                for i, nid in enumerate(nodos_ids):
+                    nodo = red.nodos[nid]
+                    aparatos_list[i] = nodo.tipo_aparato or ""
+                    valvulas_list[i] = nodo.valvula_tipo or ""
+                    aperturas_list[i] = nodo.valvula_apertura if nodo.valvula_tipo else 100.0
+                    if nodo.es_entrada:
+                        default_entrada_idx = i
     
         col1, col2 = st.columns([1, 2.5])
         with col1:
