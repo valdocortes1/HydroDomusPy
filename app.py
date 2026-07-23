@@ -93,7 +93,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos"""
+    """Genera HTML para la configuración interactiva de nodos con apertura de válvula"""
     
     # Verificar que los datos no estén vacíos
     if not nodos_data or not tuberias_data:
@@ -123,6 +123,8 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .info-nodo h4{{margin:0 0 6px 0;color:#3498db;font-size:12px}}
 .info-nodo p{{margin:4px 0;font-size:10px;color:#aaaaaa}}
 select{{font-size:10px;padding:3px;margin:3px 0;width:100%;border-radius:4px;border:1px solid #444444;background:#2d2d2d;color:#ffffff}}
+input[type="range"]{{width:100%;margin:5px 0;accent-color:#3498db}}
+.apertura-label{{font-size:10px;color:#aaaaaa;display:flex;justify-content:space-between}}
 hr{{margin:8px 0;border-color:#444444}}
 label{{color:#ffffff}}
 </style>
@@ -157,7 +159,7 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// ACTUALIZAR GRÁFICO 3D - CORREGIDO
+// ACTUALIZAR GRÁFICO 3D
 // ============================================================
 function actualizarGrafico() {{
     // Verificar que hay datos
@@ -181,7 +183,7 @@ function actualizarGrafico() {{
         ny.push(n.y);
         nz.push(n.z);
         labels.push(String(n.id));
-        customdata.push(n.id);  // Guardamos el ID del nodo en customdata
+        customdata.push(n.id);
         
         if(n.id === entradaId) {{
             col.push('#e74c3c');
@@ -251,16 +253,12 @@ function actualizarGrafico() {{
     
     Plotly.newPlot('main', traces, layout);
     
-    // ============================================================
-    // EVENTO CLICK - CORREGIDO
-    // ============================================================
+    // Evento click
     document.getElementById('main').on('plotly_click', function(data) {{
         if(data.points && data.points[0]) {{
-            // Obtener el customdata (ID del nodo)
             const nodoId = data.points[0].customdata;
             console.log("Click en nodo ID:", nodoId);
             
-            // Buscar el nodo por ID
             const nodo = nodos.find(n => n.id === nodoId);
             if(nodo) {{
                 mostrarPanel(nodo);
@@ -272,7 +270,7 @@ function actualizarGrafico() {{
 }}
 
 // ============================================================
-// FUNCIONES DEL PANEL
+// FUNCIONES DEL PANEL - CON APERTURA DE VÁLVULA
 // ============================================================
 function mostrarPanel(nodo) {{
     if (!nodo) return;
@@ -281,6 +279,7 @@ function mostrarPanel(nodo) {{
     const tieneAparato = !!nodo.tipo_aparato;
     const tieneValvula = !!nodo.valvula_tipo;
     const valvulaCerrada = nodo.valvula_cerrada || false;
+    const apertura = nodo.valvula_apertura !== undefined ? nodo.valvula_apertura : 100;
     
     let html = `<div class="info-nodo"><h4>🔘 Nodo ${{nodo.id}}</h4>
     <p>📍 (${{nodo.x.toFixed(1)}}, ${{nodo.y.toFixed(1)}}, ${{nodo.z.toFixed(1)}})</p>
@@ -288,7 +287,7 @@ function mostrarPanel(nodo) {{
     if(esEntrada) html += '<span class="badge-entrada">🚰 ENTRADA</span>';
     if(tieneAparato) html += `<span class="badge-aparato">📌 ${{nodo.tipo_aparato}}</span>`;
     if(tieneValvula) {{
-        const estadoValvula = valvulaCerrada ? 'CERRADA' : 'ABIERTA';
+        const estadoValvula = valvulaCerrada ? 'CERRADA' : `Abierta al ${{apertura}}%`;
         html += `<span class="badge-valvula">🔧 ${{nodo.valvula_tipo}} (${{estadoValvula}})</span>`;
     }}
     if(!esEntrada && !tieneAparato && !tieneValvula) html += '⚪ Sin asignar';
@@ -312,11 +311,22 @@ function mostrarPanel(nodo) {{
         <option value="Check" ${{nodo.valvula_tipo === 'Check' ? 'selected' : ''}}>Check (Leq=2.5m)</option>
         <option value="Esfera" ${{nodo.valvula_tipo === 'Esfera' ? 'selected' : ''}}>Esfera (Leq=0.2m)</option>
     </select>
-    <select id="selEstadoValvula" style="width:100%; margin-top:2px" ${{!tieneValvula ? 'disabled' : ''}}>
-        <option value="abierta" ${{!valvulaCerrada ? 'selected' : ''}}>ABIERTA (flujo normal)</option>
-        <option value="cerrada" ${{valvulaCerrada ? 'selected' : ''}}>CERRADA (aisla aguas abajo)</option>
-    </select>
-    <button class="btn" onclick="setValvula(${{nodo.id}})" style="width:100%">Aplicar</button></div>`;
+    
+    <!-- Slider de apertura -->
+    <div style="margin-top:8px;">
+        <label style="font-size:10px; color:#aaaaaa;">🔓 Apertura de válvula: <span id="aperturaDisplay">${{apertura}}</span>%</label>
+        <input type="range" id="selApertura" min="0" max="100" value="${{apertura}}" step="5" 
+               style="width:100%; margin:3px 0;" 
+               oninput="document.getElementById('aperturaDisplay').innerText = this.value">
+    </div>
+    
+    <div style="margin-top:5px">
+        <select id="selEstadoValvula" style="width:100%; margin-top:2px" ${{!tieneValvula ? 'disabled' : ''}}>
+            <option value="abierta" ${{!valvulaCerrada ? 'selected' : ''}}>ABIERTA (flujo normal)</option>
+            <option value="cerrada" ${{valvulaCerrada ? 'selected' : ''}}>CERRADA (aisla aguas abajo)</option>
+        </select>
+    </div>
+    <button class="btn" onclick="setValvula(${{nodo.id}})" style="width:100%; margin-top:3px">Aplicar</button></div>`;
     
     if(!esEntrada && !tieneAparato && !tieneValvula) {{
         html += `<hr><button class="btn" onclick="limpiarNodo(${{nodo.id}})" style="width:100%">🗑️ Limpiar todo</button>`;
@@ -326,7 +336,7 @@ function mostrarPanel(nodo) {{
 }}
 
 // ============================================================
-// FUNCIONES DE CONFIGURACIÓN
+// FUNCIONES DE CONFIGURACIÓN - CON APERTURA DE VÁLVULA
 // ============================================================
 function setEntrada(id) {{
     if(entradaId !== null && entradaId !== undefined) {{
@@ -340,6 +350,7 @@ function setEntrada(id) {{
         nodo.tipo_aparato = "";
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
+        nodo.valvula_apertura = 100;
     }}
     actualizarGrafico();
     actualizarResumen();
@@ -366,15 +377,18 @@ function setAparato(id) {{
 function setValvula(id) {{
     const tipo = document.getElementById('selValvula').value;
     const estado = document.getElementById('selEstadoValvula').value;
+    const apertura = parseInt(document.getElementById('selApertura').value) || 100;
     const nodo = nodos.find(n => n.id === id);
     if(!nodo) return;
     
     if(!tipo) {{
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
+        nodo.valvula_apertura = 100;
     }} else {{
         nodo.valvula_tipo = tipo;
         nodo.valvula_cerrada = (estado === 'cerrada');
+        nodo.valvula_apertura = apertura;
     }}
     actualizarGrafico();
     actualizarResumen();
@@ -389,6 +403,7 @@ function limpiarNodo(id) {{
         nodo.tipo_aparato = "";
         nodo.valvula_tipo = "";
         nodo.valvula_cerrada = false;
+        nodo.valvula_apertura = 100;
     }}
     actualizarGrafico();
     actualizarResumen();
@@ -403,6 +418,7 @@ function resetear() {{
             n.tipo_aparato = "";
             n.valvula_tipo = "";
             n.valvula_cerrada = false;
+            n.valvula_apertura = 100;
         }}
         actualizarGrafico();
         actualizarResumen();
@@ -438,7 +454,8 @@ function guardar() {{
             es_entrada: n.id === entradaId,
             tipo_aparato: n.tipo_aparato,
             valvula_tipo: n.valvula_tipo,
-            valvula_cerrada: n.valvula_cerrada || false
+            valvula_cerrada: n.valvula_cerrada || false,
+            valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
         }}))
     }};
     const blob = new Blob([JSON.stringify(config, null, 2)], {{type: 'application/json'}});
