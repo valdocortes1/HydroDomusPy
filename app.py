@@ -189,6 +189,40 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+
+# ================================================================================
+# SELECTOR DE TEMA (Modo Oscuro/Claro)
+# ================================================================================
+
+# Inicializar el tema en session_state si no existe
+if 'tema' not in st.session_state:
+    # Intenta obtener el tema del sistema/configuración, o usa 'dark' por defecto
+    st.session_state.tema = st.get_option("theme.base") or "dark"
+
+# Crear columnas para el título y el selector
+col_titulo, col_selector = st.columns([3, 1])
+
+with col_titulo:
+    st.title("💧 Hydro Domus Py")
+    st.caption("Análisis Hidráulico para Redes Internas • NTC 1500 - RAS")
+
+with col_selector:
+    # Selector de tema
+    tema_seleccionado = st.selectbox(
+        "🎨 Tema",
+        options=["dark", "light"],
+        index=0 if st.session_state.tema == "dark" else 1,
+        label_visibility="collapsed",
+        key="selector_tema"
+    )
+
+    # Si el usuario cambia el tema, actualizamos el estado y recargamos la página
+    if tema_seleccionado != st.session_state.tema:
+        st.session_state.tema = tema_seleccionado
+        # Forzamos la recarga para aplicar el nuevo tema
+        st.rerun()
+
+
 # ================================================================================
 # INICIALIZAR ESTADO DE SESIÓN
 # ================================================================================
