@@ -1192,13 +1192,19 @@ if st.session_state.red is not None:
             "📋 Materiales"
         ])
         
+        # ===== PESTAÑA 1: MODELO 3D =====
         with tab1:
             st.plotly_chart(
-                generate_3d_plot(red, st.session_state.presion_entrada), 
+                generate_3d_plot(
+                    red, 
+                    st.session_state.presion_entrada,
+                    st.session_state.tipo_ocupacion
+                ), 
                 use_container_width=True, 
                 key="grafico_resultados"
             )
         
+        # ===== PESTAÑA 2: RUTA CRÍTICA =====
         with tab2:
             st.markdown("#### Perfil de la ruta más alejada desde el nodo de entrada")
             st.info("💡 Pasa el cursor sobre la gráfica para ver simultáneamente la elevación y la presión en cada nodo.")
@@ -1208,6 +1214,7 @@ if st.session_state.red is not None:
             else:
                 st.warning("No se pudo generar el perfil. Asegúrese de haber configurado un nodo de entrada válido.")
         
+        # ===== PESTAÑA 3: NODOS =====
         with tab3:
             datos_nodos = []
             for n in red.nodos.values():
@@ -1233,12 +1240,11 @@ if st.session_state.red is not None:
                 }
             )
         
+        # ===== PESTAÑA 4: TUBERÍAS =====
         with tab4:
             datos_tubos = []
             for t in red.tuberias.values():
-                # Calcular Re y f si están disponibles
-                # Si no están calculados, usar valores por defecto
-                Re = t.f_friccion * 0  # Placeholder - en tu modelo deberías calcularlo
+                Re = t.f_friccion * 0
                 f = t.f_friccion if hasattr(t, 'f_friccion') else 0.02
                 
                 datos_tubos.append({
@@ -1277,14 +1283,12 @@ if st.session_state.red is not None:
             
             datos_acc = []
             for a in red.accesorios:
-                # Determinar diámetro del accesorio
                 diam = "N/A"
                 for t in red.tuberias.values():
                     if t.nodo_inicio == a.nodo_id or t.nodo_fin == a.nodo_id:
                         diam = t.diametro_nominal_pulg
                         break
                 
-                # Formatear nombre del accesorio
                 nombre = a.tipo.replace("_", " ")
                 if "Valvula" in nombre:
                     nombre = nombre.replace("Valvula ", "Válvula ")
