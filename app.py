@@ -18,15 +18,13 @@ from plotly.subplots import make_subplots
 import tempfile
 import os
 import json
-import webbrowser
+import base64
 from datetime import datetime
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional
 import math
 import pandas as pd
-import io
-import base64
 
 # ================================================================================
 # CONFIGURACIÓN DE PÁGINA
@@ -65,9 +63,6 @@ DIAMETROS_PAVCO = {
 EPSILON_PVC_MM = 0.0015
 GRAVEDAD = 9.81
 VISCOSIDAD_AGUA = 1e-6
-VEL_MIN_MS = 0.5
-VEL_MAX_MS = 2.0
-PRESION_ENTRADA_MCA = 15.0
 PRESION_MIN_NORMA = 5.0
 TOLERANCIA_CONEXION_M = 0.01
 
@@ -405,6 +400,11 @@ class HydraulicAnalyzer:
         self.diametro_maximo = diametro_maximo
         self.callback = callback_progreso
         
+        # Obtener valores de session_state
+        self.vel_min = st.session_state.get('vel_min', 0.5)
+        self.vel_max = st.session_state.get('vel_max', 2.0)
+        self.presion_entrada = st.session_state.get('presion_entrada', 15.0)
+        
         if self.diametro_maximo is not None:
             self.diam_comerciales = [d for d in self.diam_comerciales_original if d <= self.diametro_maximo]
         else:
@@ -487,13 +487,13 @@ class HydraulicAnalyzer:
                 v = t.calcular_velocidad()
                 d_actual = t.diametro_mm
                 
-                if v < VEL_MIN_MS and d_actual > diam_min:
+                if v < self.vel_min and d_actual > diam_min:
                     idx = self.diam_comerciales.index(d_actual)
                     nuevo_diam = self.diam_comerciales[max(0, idx-1)]
                     if nuevo_diam != d_actual:
                         t.diametro_mm = nuevo_diam
                         cambios = True
-                elif v > VEL_MAX_MS and d_actual < diam_max:
+                elif v > self.vel_max and d_actual < diam_max:
                     idx = self.diam_comerciales.index(d_actual)
                     nuevo_diam = self.diam_comerciales[min(len(self.diam_comerciales)-1, idx+1)]
                     if nuevo_diam != d_actual:
@@ -539,8 +539,7 @@ class HydraulicAnalyzer:
         for nodo in self.red.nodos.values():
             nodo.presion_mca = None
         
-        presion_entrada = st.session_state.get('presion_entrada', 15.0)
-        self.red.nodos[entrada_id].presion_mca = presion_entrada
+        self.red.nodos[entrada_id].presion_mca = self.presion_entrada
         
         queue = deque([entrada_id])
         visitados = set()
@@ -756,6 +755,9 @@ def ajustar_cotas_relativas(red):
 # ================================================================================
 def generate_3d_plot(red, presion_entrada=15.0):
     """Genera gráfico 3D completo con Plotly"""
+    vel_min = st.session_state.get('vel_min', 0.5)
+    vel_max = st.session_state.get('vel_max', 2.0)
+    
     fig = go.Figure()
     
     diametros = [t.diametro_mm for t in red.tuberias.values() if t.diametro_mm > 0]
@@ -770,9 +772,9 @@ def generate_3d_plot(red, presion_entrada=15.0):
         n1, n2 = red.nodos[t.nodo_inicio], red.nodos[t.nodo_fin]
         v = t.velocidad_ms
         
-        if v < VEL_MIN_MS:
+        if v < vel_min:
             color, estado = '#74b9ff', 'Velocidad baja'
-        elif v <= VEL_MAX_MS:
+        elif v <= vel_max:
             color, estado = '#55efc4', 'Velocidad normal'
         else:
             color, estado = '#ff7675', 'Velocidad alta'
@@ -1052,7 +1054,6 @@ def generar_reporte_materiales(red):
             nombre = nombre.replace("Valvula ", "Válvula ")
         accesorios[nombre] = accesorios.get(nombre, 0) + 1
     
-    # Crear DataFrames
     df_tuberias = pd.DataFrame([
         {
             "Diámetro": d,
@@ -1073,6 +1074,250 @@ def generar_reporte_materiales(red):
     total_acc = sum(accesorios.values())
     
     return df_tuberias, df_accesorios, total_long, total_tramos, total_acc
+
+# ================================================================================
+# FUNCIONES DE EXPORTACIÓN
+# ================================================================================
+def exportar_excel(red):
+    """Exporta resultados a Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    output = io.BytesIO()
+    wb = openpyxl.Workbook()
+    
+    default_sheet = wb.active
+    wb.remove(default_sheet)
+    
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="FF2C3E50", end_color="FF2C3E50", fill_type="solid")
+    title_font = Font(bold=True, size=14, color="FF1A5276")
+    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                         top=Side(style='thin'), bottom=Side(style='thin'))
+    green_fill = PatternFill(start_color="FF27AE60", end_color="FF27AE60", fill_type="solid")
+    red_fill = PatternFill(start_color="FFE74C3C", end_color="FFE74C3C", fill_type="solid")
+    section_fill = PatternFill(start_color="FFD5DBDB", end_color="FFD5DBDB", fill_type="solid")
+    
+    # HOJA 1: RESUMEN
+    ws_resumen = wb.create_sheet("1. Resumen Ejecutivo", 0)
+    
+    presiones = [n.presion_mca for n in red.nodos.values() if n.presion_mca is not None]
+    ug_acumulada = red.calcular_ug_acumulada()
+    ug_total = ug_acumulada.get(red.nodo_entrada_id, 0)
+    tipo_ocupacion = st.session_state.get('tipo_ocupacion', "Vivienda Unifamiliar")
+    caudal_total = caudal_por_ug(ug_total, tipo_ocupacion)
+    presion_entrada = st.session_state.get('presion_entrada', 15.0)
+    cumple = min(presiones) >= PRESION_MIN_NORMA if presiones else False
+    
+    aparatos = sum(1 for n in red.nodos.values() if n.tipo_aparato)
+    valvulas = sum(1 for n in red.nodos.values() if n.valvula_tipo)
+    valvulas_cerradas = sum(1 for n in red.nodos.values() if n.valvula_cerrada)
+    
+    ws_resumen.merge_cells('A1:D1')
+    cell = ws_resumen.cell(row=1, column=1, value="HYDRO DOMUS PY - ANÁLISIS HIDRÁULICO")
+    cell.font = Font(bold=True, size=16, color="FF1A5276")
+    cell.alignment = Alignment(horizontal="center")
+    
+    ws_resumen.merge_cells('A2:D2')
+    cell = ws_resumen.cell(row=2, column=1, value=f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    cell.alignment = Alignment(horizontal="center")
+    
+    row = 4
+    
+    ws_resumen.merge_cells(f'A{row}:D{row}')
+    cell = ws_resumen.cell(row=row, column=1, value="📐 PARÁMETROS DE CÁLCULO")
+    cell.font = title_font
+    cell.fill = section_fill
+    row += 1
+    
+    params_data = [
+        ["Tipo de edificación", tipo_ocupacion],
+        ["Presión disponible en entrada", f"{presion_entrada} mca"],
+        ["Velocidad mínima", f"{st.session_state.get('vel_min', 0.5)} m/s"],
+        ["Velocidad máxima", f"{st.session_state.get('vel_max', 2.0)} m/s"],
+        ["Presión mínima requerida (NTC 1500)", f"{PRESION_MIN_NORMA} mca"],
+    ]
+    
+    for param in params_data:
+        ws_resumen.cell(row=row, column=1, value=param[0]).font = Font(bold=True)
+        ws_resumen.cell(row=row, column=2, value=param[1])
+        ws_resumen.cell(row=row, column=1).border = thin_border
+        ws_resumen.cell(row=row, column=2).border = thin_border
+        row += 1
+    
+    row += 1
+    
+    ws_resumen.merge_cells(f'A{row}:D{row}')
+    cell = ws_resumen.cell(row=row, column=1, value="📊 ESTADÍSTICAS DE LA RED")
+    cell.font = title_font
+    cell.fill = section_fill
+    row += 1
+    
+    stats_data = [
+        ["Nodos totales", len(red.nodos)],
+        ["Tuberías", len(red.tuberias)],
+        ["Accesorios detectados", len(red.accesorios)],
+        ["Aparatos sanitarios asignados", aparatos],
+        ["Válvulas totales", valvulas],
+        ["Válvulas cerradas", valvulas_cerradas],
+    ]
+    
+    for stat in stats_data:
+        ws_resumen.cell(row=row, column=1, value=stat[0]).font = Font(bold=True)
+        ws_resumen.cell(row=row, column=2, value=stat[1])
+        ws_resumen.cell(row=row, column=1).border = thin_border
+        ws_resumen.cell(row=row, column=2).border = thin_border
+        row += 1
+    
+    row += 1
+    
+    ws_resumen.merge_cells(f'A{row}:D{row}')
+    cell = ws_resumen.cell(row=row, column=1, value="💧 CAUDALES")
+    cell.font = title_font
+    cell.fill = section_fill
+    row += 1
+    
+    caudal_data = [
+        ["Unidades de gasto totales (UG)", f"{ug_total:.0f}"],
+        ["Caudal máximo probable (Hunter)", f"{caudal_total:.2f} L/s"],
+        ["Fórmula aplicada", TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {}).get("formula", "0.2√UG + 0.5")],
+    ]
+    
+    for caud in caudal_data:
+        ws_resumen.cell(row=row, column=1, value=caud[0]).font = Font(bold=True)
+        ws_resumen.cell(row=row, column=2, value=caud[1])
+        ws_resumen.cell(row=row, column=1).border = thin_border
+        ws_resumen.cell(row=row, column=2).border = thin_border
+        row += 1
+    
+    row += 1
+    
+    ws_resumen.merge_cells(f'A{row}:D{row}')
+    cell = ws_resumen.cell(row=row, column=1, value="💪 PRESIONES")
+    cell.font = title_font
+    cell.fill = section_fill
+    row += 1
+    
+    if presiones:
+        p_min, p_max = min(presiones), max(presiones)
+        p_prom = sum(presiones) / len(presiones)
+        presion_data = [
+            ["Presión en entrada", f"{presion_entrada:.1f} mca"],
+            ["Presión mínima", f"{p_min:.2f} mca"],
+            ["Presión máxima", f"{p_max:.2f} mca"],
+            ["Presión promedio", f"{p_prom:.2f} mca"],
+        ]
+        
+        for pres in presion_data:
+            ws_resumen.cell(row=row, column=1, value=pres[0]).font = Font(bold=True)
+            ws_resumen.cell(row=row, column=2, value=pres[1])
+            ws_resumen.cell(row=row, column=1).border = thin_border
+            ws_resumen.cell(row=row, column=2).border = thin_border
+            row += 1
+        
+        row += 1
+        
+        ws_resumen.merge_cells(f'A{row}:D{row}')
+        if cumple:
+            cell = ws_resumen.cell(row=row, column=1, value="✅ CUMPLIMIENTO NORMA NTC 1500")
+            cell.font = Font(bold=True, size=12, color="FFFFFF")
+            cell.fill = green_fill
+            cell.alignment = Alignment(horizontal="center")
+        else:
+            cell = ws_resumen.cell(row=row, column=1, value="❌ NO CUMPLE NORMA NTC 1500")
+            cell.font = Font(bold=True, size=12, color="FFFFFF")
+            cell.fill = red_fill
+            cell.alignment = Alignment(horizontal="center")
+    
+    ws_resumen.column_dimensions['A'].width = 35
+    ws_resumen.column_dimensions['B'].width = 25
+    
+    # HOJA 2: NODOS
+    ws_nodos = wb.create_sheet("2. Nodos", 1)
+    headers_nodos = ["ID", "X (m)", "Y (m)", "Z (m)", "Presión (mca)", "Aparato", "Válvula", "Entrada"]
+    for col, header in enumerate(headers_nodos, 1):
+        cell = ws_nodos.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+    
+    for row_idx, n in enumerate(red.nodos.values(), 2):
+        valvula_texto = f"{n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})" if n.valvula_tipo else "-"
+        ws_nodos.cell(row=row_idx, column=1, value=n.id).border = thin_border
+        ws_nodos.cell(row=row_idx, column=2, value=round(n.x, 2)).border = thin_border
+        ws_nodos.cell(row=row_idx, column=3, value=round(n.y, 2)).border = thin_border
+        ws_nodos.cell(row=row_idx, column=4, value=round(n.z, 2)).border = thin_border
+        ws_nodos.cell(row=row_idx, column=5, value=round(n.presion_mca, 2) if n.presion_mca else None).border = thin_border
+        ws_nodos.cell(row=row_idx, column=6, value=n.tipo_aparato or "-").border = thin_border
+        ws_nodos.cell(row=row_idx, column=7, value=valvula_texto).border = thin_border
+        ws_nodos.cell(row=row_idx, column=8, value="✓" if n.es_entrada else "").border = thin_border
+    
+    for col in range(1, len(headers_nodos) + 1):
+        ws_nodos.column_dimensions[get_column_letter(col)].width = 12
+    
+    # HOJA 3: TUBERÍAS
+    ws_tuberias = wb.create_sheet("3. Tuberías", 2)
+    headers_tuberias = ["ID", "Desde", "Hasta", "Longitud (m)", "Diámetro", "DI (mm)", "Caudal (L/s)", "Velocidad (m/s)", "Pérdida (mca)"]
+    for col, header in enumerate(headers_tuberias, 1):
+        cell = ws_tuberias.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+    
+    for row_idx, t in enumerate(red.tuberias.values(), 2):
+        ws_tuberias.cell(row=row_idx, column=1, value=t.id).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=2, value=t.nodo_inicio).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=3, value=t.nodo_fin).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=4, value=round(t.longitud_m, 2)).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=5, value=t.diametro_nominal_pulg).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=6, value=round(t.diametro_mm, 2)).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=7, value=round(t.caudal_lps, 3)).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=8, value=round(t.velocidad_ms, 2)).border = thin_border
+        ws_tuberias.cell(row=row_idx, column=9, value=round(t.perdida_mca, 3)).border = thin_border
+    
+    for col in range(1, len(headers_tuberias) + 1):
+        ws_tuberias.column_dimensions[get_column_letter(col)].width = 12
+    
+    # HOJA 4: ACCESORIOS
+    ws_accesorios = wb.create_sheet("4. Accesorios", 3)
+    headers_accesorios = ["ID", "Tipo", "Nodo", "DN (pulg)", "DI (mm)", "Leq (m)", "Pérdida (mca)"]
+    for col, header in enumerate(headers_accesorios, 1):
+        cell = ws_accesorios.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+    
+    for row_idx, acc in enumerate(red.accesorios, 2):
+        diametro_nom = "N/A"
+        diametro_mm = 0
+        for t in red.tuberias.values():
+            if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
+                diametro_nom = t.diametro_nominal_pulg
+                diam_key = diametro_nom.replace("-", "_")
+                diametro_mm = DIAMETROS_PAVCO.get(diam_key, 0)
+                break
+        
+        nombre = acc.tipo.replace("_", " ")
+        if "Valvula" in nombre:
+            nombre = nombre.replace("Valvula ", "Válvula ")
+        
+        ws_accesorios.cell(row=row_idx, column=1, value=acc.id).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=2, value=nombre).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=3, value=acc.nodo_id).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=4, value=diametro_nom).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=5, value=round(diametro_mm, 2)).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=6, value=round(acc.longitud_equivalente_m, 2)).border = thin_border
+        ws_accesorios.cell(row=row_idx, column=7, value=round(acc.perdida_mca, 4)).border = thin_border
+    
+    for col in range(1, len(headers_accesorios) + 1):
+        ws_accesorios.column_dimensions[get_column_letter(col)].width = 14
+    
+    wb.save(output)
+    return output.getvalue()
 
 # ================================================================================
 # CONFIGURACIÓN INTERACTIVA (HTML + JavaScript embebido)
@@ -1331,258 +1576,6 @@ actualizarGrafico();actualizarResumen();
     return html
 
 # ================================================================================
-# FUNCIONES DE EXPORTACIÓN
-# ================================================================================
-def exportar_excel(red):
-    """Exporta resultados a Excel"""
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
-    
-    output = io.BytesIO()
-    wb = openpyxl.Workbook()
-    
-    # Eliminar hoja por defecto
-    default_sheet = wb.active
-    wb.remove(default_sheet)
-    
-    # Estilos
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    header_fill = PatternFill(start_color="FF2C3E50", end_color="FF2C3E50", fill_type="solid")
-    title_font = Font(bold=True, size=14, color="FF1A5276")
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                         top=Side(style='thin'), bottom=Side(style='thin'))
-    green_fill = PatternFill(start_color="FF27AE60", end_color="FF27AE60", fill_type="solid")
-    red_fill = PatternFill(start_color="FFE74C3C", end_color="FFE74C3C", fill_type="solid")
-    section_fill = PatternFill(start_color="FFD5DBDB", end_color="FFD5DBDB", fill_type="solid")
-    
-    # HOJA 1: RESUMEN
-    ws_resumen = wb.create_sheet("1. Resumen Ejecutivo", 0)
-    
-    presiones = [n.presion_mca for n in red.nodos.values() if n.presion_mca is not None]
-    ug_acumulada = red.calcular_ug_acumulada()
-    ug_total = ug_acumulada.get(red.nodo_entrada_id, 0)
-    tipo_ocupacion = st.session_state.get('tipo_ocupacion', "Vivienda Unifamiliar")
-    caudal_total = caudal_por_ug(ug_total, tipo_ocupacion)
-    presion_entrada = st.session_state.get('presion_entrada', 15.0)
-    cumple = min(presiones) >= PRESION_MIN_NORMA if presiones else False
-    
-    aparatos = sum(1 for n in red.nodos.values() if n.tipo_aparato)
-    valvulas = sum(1 for n in red.nodos.values() if n.valvula_tipo)
-    valvulas_cerradas = sum(1 for n in red.nodos.values() if n.valvula_cerrada)
-    
-    # Título
-    ws_resumen.merge_cells('A1:D1')
-    cell = ws_resumen.cell(row=1, column=1, value="HYDRO DOMUS PY - ANÁLISIS HIDRÁULICO")
-    cell.font = Font(bold=True, size=16, color="FF1A5276")
-    cell.alignment = Alignment(horizontal="center")
-    
-    ws_resumen.merge_cells('A2:D2')
-    cell = ws_resumen.cell(row=2, column=1, value=f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    cell.alignment = Alignment(horizontal="center")
-    
-    row = 4
-    
-    # Parámetros
-    ws_resumen.merge_cells(f'A{row}:D{row}')
-    cell = ws_resumen.cell(row=row, column=1, value="📐 PARÁMETROS DE CÁLCULO")
-    cell.font = title_font
-    cell.fill = section_fill
-    row += 1
-    
-    params_data = [
-        ["Tipo de edificación", tipo_ocupacion],
-        ["Presión disponible en entrada", f"{presion_entrada} mca"],
-        ["Velocidad mínima", f"{VEL_MIN_MS} m/s"],
-        ["Velocidad máxima", f"{VEL_MAX_MS} m/s"],
-        ["Presión mínima requerida (NTC 1500)", f"{PRESION_MIN_NORMA} mca"],
-    ]
-    
-    for param in params_data:
-        ws_resumen.cell(row=row, column=1, value=param[0]).font = Font(bold=True)
-        ws_resumen.cell(row=row, column=2, value=param[1])
-        ws_resumen.cell(row=row, column=1).border = thin_border
-        ws_resumen.cell(row=row, column=2).border = thin_border
-        row += 1
-    
-    row += 1
-    
-    # Estadísticas
-    ws_resumen.merge_cells(f'A{row}:D{row}')
-    cell = ws_resumen.cell(row=row, column=1, value="📊 ESTADÍSTICAS DE LA RED")
-    cell.font = title_font
-    cell.fill = section_fill
-    row += 1
-    
-    stats_data = [
-        ["Nodos totales", len(red.nodos)],
-        ["Tuberías", len(red.tuberias)],
-        ["Accesorios detectados", len(red.accesorios)],
-        ["Aparatos sanitarios asignados", aparatos],
-        ["Válvulas totales", valvulas],
-        ["Válvulas cerradas", valvulas_cerradas],
-    ]
-    
-    for stat in stats_data:
-        ws_resumen.cell(row=row, column=1, value=stat[0]).font = Font(bold=True)
-        ws_resumen.cell(row=row, column=2, value=stat[1])
-        ws_resumen.cell(row=row, column=1).border = thin_border
-        ws_resumen.cell(row=row, column=2).border = thin_border
-        row += 1
-    
-    row += 1
-    
-    # Caudales
-    ws_resumen.merge_cells(f'A{row}:D{row}')
-    cell = ws_resumen.cell(row=row, column=1, value="💧 CAUDALES")
-    cell.font = title_font
-    cell.fill = section_fill
-    row += 1
-    
-    caudal_data = [
-        ["Unidades de gasto totales (UG)", f"{ug_total:.0f}"],
-        ["Caudal máximo probable (Hunter)", f"{caudal_total:.2f} L/s"],
-        ["Fórmula aplicada", TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {}).get("formula", "0.2√UG + 0.5")],
-    ]
-    
-    for caud in caudal_data:
-        ws_resumen.cell(row=row, column=1, value=caud[0]).font = Font(bold=True)
-        ws_resumen.cell(row=row, column=2, value=caud[1])
-        ws_resumen.cell(row=row, column=1).border = thin_border
-        ws_resumen.cell(row=row, column=2).border = thin_border
-        row += 1
-    
-    row += 1
-    
-    # Presiones
-    ws_resumen.merge_cells(f'A{row}:D{row}')
-    cell = ws_resumen.cell(row=row, column=1, value="💪 PRESIONES")
-    cell.font = title_font
-    cell.fill = section_fill
-    row += 1
-    
-    if presiones:
-        p_min, p_max = min(presiones), max(presiones)
-        p_prom = sum(presiones) / len(presiones)
-        presion_data = [
-            ["Presión en entrada", f"{presion_entrada:.1f} mca"],
-            ["Presión mínima", f"{p_min:.2f} mca"],
-            ["Presión máxima", f"{p_max:.2f} mca"],
-            ["Presión promedio", f"{p_prom:.2f} mca"],
-        ]
-        
-        for pres in presion_data:
-            ws_resumen.cell(row=row, column=1, value=pres[0]).font = Font(bold=True)
-            ws_resumen.cell(row=row, column=2, value=pres[1])
-            ws_resumen.cell(row=row, column=1).border = thin_border
-            ws_resumen.cell(row=row, column=2).border = thin_border
-            row += 1
-        
-        row += 1
-        
-        # Cumplimiento
-        ws_resumen.merge_cells(f'A{row}:D{row}')
-        if cumple:
-            cell = ws_resumen.cell(row=row, column=1, value="✅ CUMPLIMIENTO NORMA NTC 1500")
-            cell.font = Font(bold=True, size=12, color="FFFFFF")
-            cell.fill = green_fill
-            cell.alignment = Alignment(horizontal="center")
-        else:
-            cell = ws_resumen.cell(row=row, column=1, value="❌ NO CUMPLE NORMA NTC 1500")
-            cell.font = Font(bold=True, size=12, color="FFFFFF")
-            cell.fill = red_fill
-            cell.alignment = Alignment(horizontal="center")
-    
-    ws_resumen.column_dimensions['A'].width = 35
-    ws_resumen.column_dimensions['B'].width = 25
-    
-    # HOJA 2: NODOS
-    ws_nodos = wb.create_sheet("2. Nodos", 1)
-    headers_nodos = ["ID", "X (m)", "Y (m)", "Z (m)", "Presión (mca)", "Aparato", "Válvula", "Entrada"]
-    for col, header in enumerate(headers_nodos, 1):
-        cell = ws_nodos.cell(row=1, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = thin_border
-    
-    for row_idx, n in enumerate(red.nodos.values(), 2):
-        valvula_texto = f"{n.valvula_tipo} ({'CERRADA' if n.valvula_cerrada else 'ABIERTA'})" if n.valvula_tipo else "-"
-        ws_nodos.cell(row=row_idx, column=1, value=n.id).border = thin_border
-        ws_nodos.cell(row=row_idx, column=2, value=round(n.x, 2)).border = thin_border
-        ws_nodos.cell(row=row_idx, column=3, value=round(n.y, 2)).border = thin_border
-        ws_nodos.cell(row=row_idx, column=4, value=round(n.z, 2)).border = thin_border
-        ws_nodos.cell(row=row_idx, column=5, value=round(n.presion_mca, 2) if n.presion_mca else None).border = thin_border
-        ws_nodos.cell(row=row_idx, column=6, value=n.tipo_aparato or "-").border = thin_border
-        ws_nodos.cell(row=row_idx, column=7, value=valvula_texto).border = thin_border
-        ws_nodos.cell(row=row_idx, column=8, value="✓" if n.es_entrada else "").border = thin_border
-    
-    for col in range(1, len(headers_nodos) + 1):
-        ws_nodos.column_dimensions[get_column_letter(col)].width = 12
-    
-    # HOJA 3: TUBERÍAS
-    ws_tuberias = wb.create_sheet("3. Tuberías", 2)
-    headers_tuberias = ["ID", "Desde", "Hasta", "Longitud (m)", "Diámetro", "DI (mm)", "Caudal (L/s)", "Velocidad (m/s)", "Pérdida (mca)"]
-    for col, header in enumerate(headers_tuberias, 1):
-        cell = ws_tuberias.cell(row=1, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = thin_border
-    
-    for row_idx, t in enumerate(red.tuberias.values(), 2):
-        ws_tuberias.cell(row=row_idx, column=1, value=t.id).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=2, value=t.nodo_inicio).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=3, value=t.nodo_fin).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=4, value=round(t.longitud_m, 2)).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=5, value=t.diametro_nominal_pulg).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=6, value=round(t.diametro_mm, 2)).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=7, value=round(t.caudal_lps, 3)).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=8, value=round(t.velocidad_ms, 2)).border = thin_border
-        ws_tuberias.cell(row=row_idx, column=9, value=round(t.perdida_mca, 3)).border = thin_border
-    
-    for col in range(1, len(headers_tuberias) + 1):
-        ws_tuberias.column_dimensions[get_column_letter(col)].width = 12
-    
-    # HOJA 4: ACCESORIOS
-    ws_accesorios = wb.create_sheet("4. Accesorios", 3)
-    headers_accesorios = ["ID", "Tipo", "Nodo", "DN (pulg)", "DI (mm)", "Leq (m)", "Pérdida (mca)"]
-    for col, header in enumerate(headers_accesorios, 1):
-        cell = ws_accesorios.cell(row=1, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = thin_border
-    
-    for row_idx, acc in enumerate(red.accesorios, 2):
-        diametro_nom = "N/A"
-        diametro_mm = 0
-        for t in red.tuberias.values():
-            if t.nodo_inicio == acc.nodo_id or t.nodo_fin == acc.nodo_id:
-                diametro_nom = t.diametro_nominal_pulg
-                diam_key = diametro_nom.replace("-", "_")
-                diametro_mm = DIAMETROS_PAVCO.get(diam_key, 0)
-                break
-        
-        nombre = acc.tipo.replace("_", " ")
-        if "Valvula" in nombre:
-            nombre = nombre.replace("Valvula ", "Válvula ")
-        
-        ws_accesorios.cell(row=row_idx, column=1, value=acc.id).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=2, value=nombre).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=3, value=acc.nodo_id).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=4, value=diametro_nom).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=5, value=round(diametro_mm, 2)).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=6, value=round(acc.longitud_equivalente_m, 2)).border = thin_border
-        ws_accesorios.cell(row=row_idx, column=7, value=round(acc.perdida_mca, 4)).border = thin_border
-    
-    for col in range(1, len(headers_accesorios) + 1):
-        ws_accesorios.column_dimensions[get_column_letter(col)].width = 14
-    
-    wb.save(output)
-    return output.getvalue()
-
-# ================================================================================
 # INTERFAZ PRINCIPAL DE STREAMLIT
 # ================================================================================
 def main():
@@ -1617,12 +1610,102 @@ def main():
         st.session_state.vel_min = 0.5
     if 'vel_max' not in st.session_state:
         st.session_state.vel_max = 2.0
+    if 'tmp_dxf_path' not in st.session_state:
+        st.session_state.tmp_dxf_path = None
+    if 'dxf_reader' not in st.session_state:
+        st.session_state.dxf_reader = None
 
     # ============================================================
     # SIDEBAR - CONTROLES
     # ============================================================
     with st.sidebar:
-        # ... (código de la sidebar)
+        st.title("💧 Hydro Domus Py")
+        st.caption("Análisis Hidráulico para Redes Internas")
+        st.caption("v2.1.0 - Web")
+        st.divider()
+        
+        # ===== CARGA DE DXF =====
+        st.subheader("📁 Cargar DXF")
+        
+        # 👇 EL FILE_UPLOADER ESTÁ AQUÍ
+        dxf_file = st.file_uploader(
+            "Seleccionar archivo DXF",
+            type=['dxf'],
+            help="Cargue el plano hidrosanitario en formato DXF",
+            key="dxf_uploader_main"
+        )
+        
+        # Procesar el archivo si se ha cargado
+        if dxf_file is not None:
+            st.success(f"✅ Archivo cargado: {dxf_file.name}")
+            
+            # Guardar temporalmente
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.dxf') as tmp:
+                tmp.write(dxf_file.getvalue())
+                tmp_path = tmp.name
+                st.session_state.tmp_dxf_path = tmp_path
+            
+            try:
+                reader = DXFReader(tmp_path)
+                layers = reader.obtener_layers()
+                st.session_state.dxf_layers = layers
+                st.session_state.dxf_loaded = True
+                st.session_state.dxf_reader = reader
+                
+                st.success(f"✅ {len(layers)} layers encontrados")
+                
+                # Selección de layers
+                selected = st.multiselect(
+                    "Seleccionar layers con tuberías:",
+                    options=layers,
+                    default=layers[:3] if len(layers) >= 3 else layers,
+                    key="layer_selector_main"
+                )
+                
+                if selected:
+                    st.session_state.selected_layers = selected
+                    if st.button("🚀 Construir Red", type="primary", use_container_width=True):
+                        with st.spinner("Construyendo red a partir del DXF..."):
+                            lineas_raw = reader.extraer_lineas(selected)
+                            if lineas_raw:
+                                lineas = normalizar_coordenadas(lineas_raw, factor_conversion=1000)
+                                nodos_dict, tuberias = construir_red(lineas)
+                                
+                                red = RedHidraulica()
+                                for (x, y, z), nid in nodos_dict.items():
+                                    red.agregar_nodo(Nodo(id=nid, x=x, y=y, z=z))
+                                for t in tuberias:
+                                    red.agregar_tuberia(t)
+                                
+                                st.session_state.red = red
+                                
+                                # Configuración automática: primer nodo como entrada
+                                if len(red.nodos) > 0:
+                                    primer_nodo = list(red.nodos.keys())[0]
+                                    red.nodo_entrada_id = primer_nodo
+                                    red.nodos[primer_nodo].es_entrada = True
+                                    ajustar_cotas_relativas(red)
+                                
+                                st.success(f"✅ Red construida: {len(red.nodos)} nodos, {len(red.tuberias)} tuberías")
+                                st.rerun()
+                            else:
+                                st.error("No se encontraron líneas en los layers seleccionados")
+                else:
+                    st.warning("Seleccione al menos un layer")
+                    
+            except Exception as e:
+                st.error(f"Error leyendo DXF: {e}")
+                st.session_state.dxf_loaded = False
+            
+            # Limpiar archivo temporal
+            if st.session_state.tmp_dxf_path and os.path.exists(st.session_state.tmp_dxf_path):
+                try:
+                    os.unlink(st.session_state.tmp_dxf_path)
+                    st.session_state.tmp_dxf_path = None
+                except:
+                    pass
+        
+        st.divider()
         
         # ===== PARÁMETROS =====
         st.subheader("⚙️ Parámetros")
@@ -1632,7 +1715,8 @@ def main():
             value=st.session_state.presion_entrada,
             min_value=1.0,
             max_value=50.0,
-            step=0.5
+            step=0.5,
+            help="Presión en el nodo de entrada (valor típico: 15-30 mca)"
         )
         st.session_state.presion_entrada = presion_entrada
         
@@ -1656,15 +1740,85 @@ def main():
             )
             st.session_state.vel_max = vel_max
         
-        # ... (resto del código)
+        tipo_ocupacion = st.selectbox(
+            "🏢 Tipo de edificación:",
+            options=list(TIPOS_OCUPACION_AGUA.keys()),
+            index=list(TIPOS_OCUPACION_AGUA.keys()).index(st.session_state.tipo_ocupacion) 
+                 if st.session_state.tipo_ocupacion in TIPOS_OCUPACION_AGUA else 0,
+            key="tipo_ocupacion_main"
+        )
+        st.session_state.tipo_ocupacion = tipo_ocupacion
+        
+        # Mostrar info de ocupación
+        info_ocupacion = TIPOS_OCUPACION_AGUA.get(tipo_ocupacion, {})
+        st.caption(f"📌 {info_ocupacion.get('descripcion', '')}")
+        st.caption(f"📐 {info_ocupacion.get('formula', '')}")
+        
+        restringir_diam = st.checkbox("Restringir diámetro máximo", key="restringir_diam_main")
+        if restringir_diam:
+            diam_max = st.selectbox(
+                "Diámetro máximo:",
+                options=list(DIAMETROS_PAVCO.keys()),
+                key="diam_max_main"
+            )
+            st.session_state.diametro_maximo = DIAMETROS_PAVCO[diam_max]
+        else:
+            st.session_state.diametro_maximo = None
+        
+        st.divider()
+        
+        # ===== CONFIGURACIÓN DE NODOS =====
+        if st.session_state.red is not None:
+            st.subheader("🔧 Configurar Nodos")
+            
+            if st.button("🎯 Configuración Interactiva 3D", use_container_width=True, key="config_3d_main"):
+                nodos_data = [{"id": n.id, "x": n.x, "y": n.y, "z": n.z, 
+                               "es_entrada": n.es_entrada, "tipo_aparato": n.tipo_aparato, 
+                               "valvula_tipo": n.valvula_tipo, "valvula_cerrada": n.valvula_cerrada} 
+                              for n in st.session_state.red.nodos.values()]
+                
+                tuberias_data = []
+                for t in st.session_state.red.tuberias.values():
+                    n1, n2 = st.session_state.red.nodos[t.nodo_inicio], st.session_state.red.nodos[t.nodo_fin]
+                    tuberias_data.append({"id": t.id, "x1": n1.x, "y1": n1.y, "z1": n1.z, 
+                                          "x2": n2.x, "y2": n2.y, "z2": n2.z})
+                
+                html_content = generar_html_config(nodos_data, tuberias_data)
+                
+                with st.expander("Configuración Interactiva 3D", expanded=True):
+                    st.components.v1.html(html_content, height=650, scrolling=True)
+                    st.info("💡 Configure los nodos en el gráfico 3D y descargue el archivo JSON")
+            
+            # Asignación manual de entrada
+            st.subheader("📌 Asignación Manual")
+            
+            # Seleccionar nodo de entrada
+            nodo_ids = list(st.session_state.red.nodos.keys())
+            entrada_actual = st.session_state.red.nodo_entrada_id
+            nodo_entrada = st.selectbox(
+                "Nodo de entrada:",
+                options=nodo_ids,
+                index=nodo_ids.index(entrada_actual) if entrada_actual in nodo_ids else 0,
+                format_func=lambda x: f"Nodo {x}",
+                key="nodo_entrada_main"
+            )
+            
+            if nodo_entrada != entrada_actual:
+                if st.button("Establecer como Entrada", key="set_entrada_main"):
+                    for n in st.session_state.red.nodos.values():
+                        n.es_entrada = False
+                    st.session_state.red.nodo_entrada_id = nodo_entrada
+                    st.session_state.red.nodos[nodo_entrada].es_entrada = True
+                    ajustar_cotas_relativas(st.session_state.red)
+                    st.success(f"✅ Nodo {nodo_entrada} establecido como entrada")
+                    st.rerun()
+        
+        st.divider()
         
         # ===== EJECUTAR ANÁLISIS =====
         if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
-            if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True):
+            if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True, key="ejecutar_analisis_main"):
                 with st.spinner("Ejecutando análisis hidráulico..."):
-                    # ❌ ELIMINAR: global VEL_MIN_MS, VEL_MAX_MS
-                    # ✅ Los valores ya están en session_state
-                    
                     # Ejecutar análisis
                     analyzer = HydraulicAnalyzer(
                         st.session_state.red,
@@ -1822,7 +1976,7 @@ def main():
                 # Botones de exportación
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("📊 Exportar a Excel", use_container_width=True):
+                    if st.button("📊 Exportar a Excel", use_container_width=True, key="export_excel_main"):
                         try:
                             excel_data = exportar_excel(red)
                             b64 = base64.b64encode(excel_data).decode()
@@ -1834,7 +1988,7 @@ def main():
                 
                 with col2:
                     # Botón para guardar configuración
-                    if st.button("💾 Guardar Configuración", use_container_width=True):
+                    if st.button("💾 Guardar Configuración", use_container_width=True, key="save_config_main"):
                         config = {
                             "nodo_entrada": red.nodo_entrada_id,
                             "nodos": [
@@ -1883,7 +2037,8 @@ def main():
             
             tabla = st.selectbox(
                 "Seleccionar tabla:",
-                ["Nodos", "Tuberías", "Accesorios"]
+                ["Nodos", "Tuberías", "Accesorios"],
+                key="tabla_select_main"
             )
             
             if tabla == "Nodos":
@@ -1979,7 +2134,7 @@ def main():
                 st.caption("💡 Nota: Las estimaciones son aproximadas. Consulte especificaciones del fabricante.")
                 
                 # Botón de exportación de materiales
-                if st.button("📊 Exportar Materiales a Excel", use_container_width=True):
+                if st.button("📊 Exportar Materiales a Excel", use_container_width=True, key="export_materiales_main"):
                     try:
                         excel_data = exportar_excel(red)
                         b64 = base64.b64encode(excel_data).decode()
