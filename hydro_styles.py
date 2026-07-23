@@ -22,6 +22,7 @@ def apply_enhanced_styles():
     
     # Paleta de colores según tema
     if is_dark:
+        # ===== MODO OSCURO =====
         bg_primary = "#0e1117"
         bg_secondary = "#1e2a3a"
         card_bg = "#262730"
@@ -30,17 +31,28 @@ def apply_enhanced_styles():
         text_primary = "#ffffff"
         text_secondary = "#bbbbbb"
         text_muted = "#888888"
+        text_light = "#e0e0e0"
         header_grad = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
+        header_text = "#ffffff"
+        header_subtext = "rgba(255,255,255,0.7)"
+        tooltip_bg = "rgba(30,30,30,0.9)"
+        input_bg = "#1e2a3a"
     else:
+        # ===== MODO CLARO =====
         bg_primary = "#f0f2f6"
         bg_secondary = "#ffffff"
         card_bg = "#ffffff"
-        border_color = "#e0e0e0"
+        border_color = "#d0d0d0"
         shadow_color = "rgba(0,0,0,0.08)"
         text_primary = "#1a1a2e"
-        text_secondary = "#555555"
-        text_muted = "#888888"
+        text_secondary = "#4a4a5a"
+        text_muted = "#7a7a8a"
+        text_light = "#2a2a3e"
         header_grad = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
+        header_text = "#ffffff"
+        header_subtext = "rgba(255,255,255,0.85)"
+        tooltip_bg = "rgba(255,255,255,0.95)"
+        input_bg = "#ffffff"
     
     st.markdown(f"""
     <style>
@@ -86,7 +98,7 @@ def apply_enhanced_styles():
         }}
         
         .main-header .title {{
-            color: {text_primary};
+            color: {header_text};
             font-size: 1.6rem;
             font-weight: 700;
             margin: 0;
@@ -94,7 +106,7 @@ def apply_enhanced_styles():
         }}
         
         .main-header .subtitle {{
-            color: rgba(255,255,255,0.7);
+            color: {header_subtext};
             font-size: 0.8rem;
             margin: 0;
         }}
@@ -113,7 +125,7 @@ def apply_enhanced_styles():
             display: flex;
             align-items: center;
             gap: 0.4rem;
-            color: {text_primary};
+            color: {header_text};
             font-size: 0.8rem;
         }}
         
@@ -221,6 +233,10 @@ def apply_enhanced_styles():
             gap: 0.5rem;
         }}
         
+        .config-section .section-title .title-text {{
+            color: {text_primary};
+        }}
+        
         /* ============================================================
            PESTAÑAS
            ============================================================ */
@@ -242,6 +258,7 @@ def apply_enhanced_styles():
         
         .stTabs [data-baseweb="tab"]:hover {{
             background: rgba(52,152,219,0.1);
+            color: {text_primary};
         }}
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
@@ -268,17 +285,31 @@ def apply_enhanced_styles():
             font-weight: 600 !important;
         }}
         
+        .stDataFrame tbody tr td {{
+            color: {text_secondary} !important;
+        }}
+        
         /* ============================================================
            INPUTS Y CONTROLES
            ============================================================ */
         .stSelectbox > div, .stNumberInput > div {{
-            background: {bg_secondary};
+            background: {input_bg};
             border: 1px solid {border_color};
             border-radius: 8px;
         }}
         
         .stSelectbox label, .stNumberInput label {{
             color: {text_secondary} !important;
+        }}
+        
+        .stSelectbox [data-baseweb="select"] > div {{
+            background: {input_bg};
+            color: {text_primary};
+        }}
+        
+        .stNumberInput input {{
+            color: {text_primary};
+            background: {input_bg};
         }}
         
         /* ============================================================
@@ -296,6 +327,10 @@ def apply_enhanced_styles():
             color: {text_muted};
         }}
         
+        .text-light {{
+            color: {text_light};
+        }}
+        
         /* ============================================================
            BOTONES EN TOOLBAR
            ============================================================ */
@@ -303,6 +338,65 @@ def apply_enhanced_styles():
             font-size: 0.8rem;
             padding: 0.3rem 0.8rem;
             border-radius: 8px;
+            background: {bg_secondary};
+            color: {text_primary};
+            border: 1px solid {border_color};
+        }}
+        
+        .stButton > button:hover {{
+            background: rgba(52,152,219,0.1);
+            border-color: #3498db;
+        }}
+        
+        .stButton > button.primary {{
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }}
+        
+        .stButton > button.primary:hover {{
+            background: #2980b9;
+            border-color: #2980b9;
+        }}
+        
+        /* ============================================================
+           EXPANDERS
+           ============================================================ */
+        .streamlit-expanderHeader {{
+            color: {text_primary} !important;
+            background: {bg_secondary} !important;
+            border: 1px solid {border_color} !important;
+            border-radius: 8px !important;
+        }}
+        
+        .streamlit-expanderHeader:hover {{
+            background: rgba(52,152,219,0.05) !important;
+        }}
+        
+        .streamlit-expanderContent {{
+            background: {bg_secondary} !important;
+            border: 1px solid {border_color} !important;
+            border-top: none !important;
+            border-radius: 0 0 8px 8px !important;
+        }}
+        
+        /* ============================================================
+           METRICAS DE STREAMLIT
+           ============================================================ */
+        [data-testid="metric-container"] {{
+            background: {card_bg};
+            border: 1px solid {border_color};
+            border-radius: 10px;
+            padding: 0.8rem;
+            box-shadow: 0 2px 8px {shadow_color};
+        }}
+        
+        [data-testid="metric-container"] label {{
+            color: {text_secondary} !important;
+        }}
+        
+        [data-testid="metric-container"] [data-testid="metric-value"] {{
+            color: {text_primary} !important;
         }}
         
         /* ============================================================
@@ -349,6 +443,36 @@ def apply_enhanced_styles():
         
         ::-webkit-scrollbar-thumb:hover {{
             background: #2980b9;
+        }}
+        
+        /* ============================================================
+           SELECTOR DE TEMA
+           ============================================================ */
+        .tema-selector {{
+            background: {bg_secondary};
+            border: 1px solid {border_color};
+            border-radius: 8px;
+            padding: 0.2rem 0.5rem;
+        }}
+        
+        .tema-selector label {{
+            color: {text_secondary} !important;
+            font-size: 0.8rem !important;
+        }}
+        
+        /* ============================================================
+           WELCOME TEXT
+           ============================================================ */
+        .welcome-title {{
+            color: {text_primary};
+        }}
+        
+        .welcome-subtitle {{
+            color: {text_secondary};
+        }}
+        
+        .welcome-muted {{
+            color: {text_muted};
         }}
     </style>
     """, unsafe_allow_html=True)
