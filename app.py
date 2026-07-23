@@ -1423,7 +1423,7 @@ label{{color:#ffffff}}
 </div>
 <hr>
 <div id="resumen" style="font-size:11px; background:#3d3d3d; padding:8px; border-radius:6px;"></div>
-<p style="font-size:8px; color:#999; text-align:center; margin-top:10px">Hydro Domus Py v2.1.0<br>NTC 1500 - RAS</p>
+<p style="font-size:8px; color:#999; text-align:center; margin-top:10px">Hydro Domus Py v1.0.0<br>NTC 1500 - RAS</p>
 </div>
 <script>
 const nodos = {json.dumps(nodos_data)};
