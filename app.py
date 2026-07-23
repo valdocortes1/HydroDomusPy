@@ -179,6 +179,7 @@ def generar_reporte_materiales(red):
     
     return df_tuberias, df_accesorios, total_long, total_tramos, total_acc
 
+# app.py
 # ================================================================================
 # CONFIGURACIÓN DE PÁGINA
 # ================================================================================
@@ -189,46 +190,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-
 # ================================================================================
-# SELECTOR DE TEMA (Modo Oscuro/Claro)
-# ================================================================================
-
-# Inicializar el tema en session_state si no existe
-if 'tema' not in st.session_state:
-    # Intentar obtener el tema del sistema/configuración, o usa 'dark' por defecto
-    tema_sistema = st.get_option("theme.base")
-    st.session_state.tema = tema_sistema if tema_sistema else "dark"
-
-# Crear columnas para el título y el selector
-col_titulo, col_selector = st.columns([3, 1])
-
-with col_titulo:
-    st.title("💧 Hydro Domus Py")
-    st.caption("Análisis Hidráulico para Redes Internas • NTC 1500 - RAS")
-
-with col_selector:
-    # Selector de tema
-    tema_seleccionado = st.selectbox(
-        "🎨 Tema",
-        options=["dark", "light"],
-        index=0 if st.session_state.tema == "dark" else 1,
-        label_visibility="collapsed",
-        key="selector_tema"
-    )
-
-    # Si el usuario cambia el tema, actualizamos el estado y recargamos la página
-    if tema_seleccionado != st.session_state.tema:
-        st.session_state.tema = tema_seleccionado
-        # ⚠️ Forzar recarga completa con st.rerun()
-        st.rerun()
-
-# Ahora aplicamos los estilos con el tema seleccionado
-apply_enhanced_styles()
-
-
-# ================================================================================
-# INICIALIZAR ESTADO DE SESIÓN
+# INICIALIZAR ESTADO DE SESIÓN (ANTES DE LOS ESTILOS)
 # ================================================================================
 if 'red' not in st.session_state:
     st.session_state.red = None
@@ -256,9 +219,56 @@ if 'tmp_dxf_path' not in st.session_state:
     st.session_state.tmp_dxf_path = None
 
 # ================================================================================
-# APLICAR ESTILOS
+# SELECTOR DE TEMA (INICIALIZAR ANTES DE APLICAR ESTILOS)
 # ================================================================================
+# Inicializar el tema en session_state si no existe
+if 'tema' not in st.session_state:
+    # Intentar obtener el tema del sistema/configuración
+    tema_sistema = st.get_option("theme.base")
+    st.session_state.tema = tema_sistema if tema_sistema else "dark"
+
+# ================================================================================
+# APLICAR ESTILOS (DESPUÉS DE INICIALIZAR EL TEMA)
+# ================================================================================
+from hydro_styles import apply_enhanced_styles
 apply_enhanced_styles()
+
+# ================================================================================
+# HEADER CON SELECTOR DE TEMA
+# ================================================================================
+# Crear columnas para el título y el selector
+col_titulo, col_selector = st.columns([3, 1])
+
+with col_titulo:
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 2rem;">💧</span>
+        <div>
+            <h1 style="margin: 0; font-size: 1.8rem;">Hydro Domus Py</h1>
+            <p style="margin: 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);">
+                Análisis Hidráulico para Redes Internas • NTC 1500 - RAS
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_selector:
+    # Selector de tema
+    tema_seleccionado = st.selectbox(
+        "🎨 Tema",
+        options=["🌙 Oscuro", "☀️ Claro"],
+        index=0 if st.session_state.tema == "dark" else 1,
+        label_visibility="collapsed",
+        key="selector_tema"
+    )
+    
+    # Convertir selección a valor interno
+    nuevo_tema = "dark" if "Oscuro" in tema_seleccionado else "light"
+    
+    # Si el usuario cambia el tema, actualizamos el estado y recargamos
+    if nuevo_tema != st.session_state.tema:
+        st.session_state.tema = nuevo_tema
+        st.rerun()
 
 # ================================================================================
 # HEADER SUPERIOR
