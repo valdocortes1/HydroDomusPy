@@ -20,9 +20,11 @@ def apply_enhanced_styles():
         theme = st.get_option("theme.base")
         is_dark = theme == "dark"
     
-    # Paleta de colores según tema
+    # ============================================================
+    # PALETA DE COLORES SEGÚN TEMA
+    # ============================================================
     if is_dark:
-        # ===== MODO OSCURO =====
+        # MODO OSCURO
         bg_primary = "#0e1117"
         bg_secondary = "#1e2a3a"
         card_bg = "#262730"
@@ -31,14 +33,15 @@ def apply_enhanced_styles():
         text_primary = "#ffffff"
         text_secondary = "#bbbbbb"
         text_muted = "#888888"
-        text_light = "#e0e0e0"
-        header_grad = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
-        header_text = "#ffffff"
-        header_subtext = "rgba(255,255,255,0.7)"
-        tooltip_bg = "rgba(30,30,30,0.9)"
+        text_header = "#ffffff"
+        text_header_sub = "rgba(255,255,255,0.7)"
         input_bg = "#1e2a3a"
+        input_text = "#ffffff"
+        btn_bg = "rgba(255,255,255,0.08)"
+        btn_hover = "rgba(255,255,255,0.15)"
+        btn_text = "#ffffff"
     else:
-        # ===== MODO CLARO =====
+        # MODO CLARO
         bg_primary = "#f0f2f6"
         bg_secondary = "#ffffff"
         card_bg = "#ffffff"
@@ -47,13 +50,17 @@ def apply_enhanced_styles():
         text_primary = "#1a1a2e"
         text_secondary = "#4a4a5a"
         text_muted = "#7a7a8a"
-        text_light = "#2a2a3e"
-        header_grad = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
-        header_text = "#ffffff"
-        header_subtext = "rgba(255,255,255,0.85)"
-        tooltip_bg = "rgba(255,255,255,0.95)"
+        text_header = "#ffffff"
+        text_header_sub = "rgba(255,255,255,0.85)"
         input_bg = "#ffffff"
+        input_text = "#1a1a2e"
+        btn_bg = "#f0f2f6"
+        btn_hover = "#e0e0e0"
+        btn_text = "#1a1a2e"
     
+    # ============================================================
+    # ESTILOS CSS
+    # ============================================================
     st.markdown(f"""
     <style>
         /* ============================================================
@@ -62,6 +69,16 @@ def apply_enhanced_styles():
         .stApp {{
             background: {bg_primary};
         }}
+        
+        .stApp * {{
+            color: {text_primary} !important;
+        }}
+        
+        /* Excepción para elementos que deben mantener su color */
+        .stApp .dot-green {{ background: #2ecc71; color: white !important; }}
+        .stApp .dot-yellow {{ background: #f1c40f; color: white !important; }}
+        .stApp .dot-red {{ background: #e74c3c; color: white !important; }}
+        .stApp .dot-gray {{ background: #7f8c8d; color: white !important; }}
         
         /* Ocultar sidebar */
         .stSidebar {{
@@ -72,7 +89,7 @@ def apply_enhanced_styles():
            HEADER SUPERIOR
            ============================================================ */
         .main-header {{
-            background: {header_grad};
+            background: linear-gradient(135deg, #1a5276, #2471a3, #2e86c1);
             padding: 1rem 2rem;
             border-radius: 12px;
             margin-bottom: 1.2rem;
@@ -82,6 +99,10 @@ def apply_enhanced_styles():
             box-shadow: 0 4px 20px {shadow_color};
             flex-wrap: wrap;
             gap: 0.8rem;
+        }}
+        
+        .main-header * {{
+            color: {text_header} !important;
         }}
         
         .main-header .logo-section {{
@@ -98,7 +119,6 @@ def apply_enhanced_styles():
         }}
         
         .main-header .title {{
-            color: {header_text};
             font-size: 1.6rem;
             font-weight: 700;
             margin: 0;
@@ -106,9 +126,9 @@ def apply_enhanced_styles():
         }}
         
         .main-header .subtitle {{
-            color: {header_subtext};
             font-size: 0.8rem;
             margin: 0;
+            color: {text_header_sub} !important;
         }}
         
         .main-header .status-section {{
@@ -125,7 +145,6 @@ def apply_enhanced_styles():
             display: flex;
             align-items: center;
             gap: 0.4rem;
-            color: {header_text};
             font-size: 0.8rem;
         }}
         
@@ -135,11 +154,6 @@ def apply_enhanced_styles():
             border-radius: 50%;
             display: inline-block;
         }}
-        
-        .dot-green {{ background: #2ecc71; }}
-        .dot-yellow {{ background: #f1c40f; }}
-        .dot-red {{ background: #e74c3c; }}
-        .dot-gray {{ background: #7f8c8d; }}
         
         /* ============================================================
            BARRA DE HERRAMIENTAS
@@ -157,6 +171,10 @@ def apply_enhanced_styles():
             border: 1px solid {border_color};
         }}
         
+        .toolbar * {{
+            color: {text_secondary} !important;
+        }}
+        
         .toolbar .tool-group {{
             display: flex;
             gap: 0.5rem;
@@ -169,11 +187,6 @@ def apply_enhanced_styles():
             height: 28px;
             background: {border_color};
             margin: 0 0.4rem;
-        }}
-        
-        .toolbar .tool-label {{
-            color: {text_secondary};
-            font-size: 0.8rem;
         }}
         
         /* ============================================================
@@ -193,22 +206,25 @@ def apply_enhanced_styles():
             justify-content: center;
         }}
         
-        .metric-card:hover {{
-            border-color: #3498db;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px {shadow_color};
+        .metric-card * {{
+            color: {text_secondary} !important;
         }}
         
         .metric-card .metric-value {{
             font-size: 1.6rem;
             font-weight: 700;
-            color: #3498db;
+            color: #3498db !important;
         }}
         
         .metric-card .metric-label {{
             font-size: 0.75rem;
-            color: {text_secondary};
             margin-top: 0.2rem;
+        }}
+        
+        .metric-card:hover {{
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px {shadow_color};
         }}
         
         /* ============================================================
@@ -223,18 +239,18 @@ def apply_enhanced_styles():
             box-shadow: 0 2px 8px {shadow_color};
         }}
         
+        .config-section * {{
+            color: {text_secondary} !important;
+        }}
+        
         .config-section .section-title {{
             font-size: 1rem;
             font-weight: 600;
-            color: #3498db;
+            color: #3498db !important;
             margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-        }}
-        
-        .config-section .section-title .title-text {{
-            color: {text_primary};
         }}
         
         /* ============================================================
@@ -253,17 +269,17 @@ def apply_enhanced_styles():
             border-radius: 8px;
             font-weight: 500;
             font-size: 0.85rem;
-            color: {text_secondary};
+            color: {text_secondary} !important;
         }}
         
         .stTabs [data-baseweb="tab"]:hover {{
             background: rgba(52,152,219,0.1);
-            color: {text_primary};
+            color: {text_primary} !important;
         }}
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
             background: #3498db;
-            color: white;
+            color: white !important;
         }}
         
         /* ============================================================
@@ -304,53 +320,34 @@ def apply_enhanced_styles():
         
         .stSelectbox [data-baseweb="select"] > div {{
             background: {input_bg};
-            color: {text_primary};
+            color: {input_text} !important;
         }}
         
         .stNumberInput input {{
-            color: {text_primary};
+            color: {input_text} !important;
             background: {input_bg};
         }}
         
         /* ============================================================
-           TEXTOS Y COLORES
-           ============================================================ */
-        .text-primary {{
-            color: {text_primary};
-        }}
-        
-        .text-secondary {{
-            color: {text_secondary};
-        }}
-        
-        .text-muted {{
-            color: {text_muted};
-        }}
-        
-        .text-light {{
-            color: {text_light};
-        }}
-        
-        /* ============================================================
-           BOTONES EN TOOLBAR
+           BOTONES
            ============================================================ */
         .stButton > button {{
             font-size: 0.8rem;
             padding: 0.3rem 0.8rem;
             border-radius: 8px;
-            background: {bg_secondary};
-            color: {text_primary};
+            background: {btn_bg};
+            color: {btn_text} !important;
             border: 1px solid {border_color};
         }}
         
         .stButton > button:hover {{
-            background: rgba(52,152,219,0.1);
+            background: {btn_hover};
             border-color: #3498db;
         }}
         
         .stButton > button.primary {{
             background: #3498db;
-            color: white;
+            color: white !important;
             border-color: #3498db;
         }}
         
@@ -367,10 +364,6 @@ def apply_enhanced_styles():
             background: {bg_secondary} !important;
             border: 1px solid {border_color} !important;
             border-radius: 8px !important;
-        }}
-        
-        .streamlit-expanderHeader:hover {{
-            background: rgba(52,152,219,0.05) !important;
         }}
         
         .streamlit-expanderContent {{
@@ -397,6 +390,28 @@ def apply_enhanced_styles():
         
         [data-testid="metric-container"] [data-testid="metric-value"] {{
             color: {text_primary} !important;
+        }}
+        
+        /* ============================================================
+           WELCOME TEXT
+           ============================================================ */
+        .welcome-title {{
+            color: {text_primary} !important;
+        }}
+        
+        .welcome-subtitle {{
+            color: {text_secondary} !important;
+        }}
+        
+        .welcome-muted {{
+            color: {text_muted} !important;
+        }}
+        
+        /* ============================================================
+           SELECTOR DE TEMA
+           ============================================================ */
+        .stSelectbox [data-baseweb="select"] {{
+            background: {input_bg} !important;
         }}
         
         /* ============================================================
@@ -443,36 +458,6 @@ def apply_enhanced_styles():
         
         ::-webkit-scrollbar-thumb:hover {{
             background: #2980b9;
-        }}
-        
-        /* ============================================================
-           SELECTOR DE TEMA
-           ============================================================ */
-        .tema-selector {{
-            background: {bg_secondary};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            padding: 0.2rem 0.5rem;
-        }}
-        
-        .tema-selector label {{
-            color: {text_secondary} !important;
-            font-size: 0.8rem !important;
-        }}
-        
-        /* ============================================================
-           WELCOME TEXT
-           ============================================================ */
-        .welcome-title {{
-            color: {text_primary};
-        }}
-        
-        .welcome-subtitle {{
-            color: {text_secondary};
-        }}
-        
-        .welcome-muted {{
-            color: {text_muted};
         }}
     </style>
     """, unsafe_allow_html=True)
