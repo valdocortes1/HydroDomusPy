@@ -91,7 +91,7 @@ $$Leq_{efectivo} = Leq_{base} \cdot \left(\frac{100}{Apertura}\right)^2$$
 
 ---
 
-## 🚀 Demo en Vivo
+## 🚀 Ejecutar software online
 
 Puedes probar la aplicación sin instalar nada en:
 
