@@ -24,6 +24,42 @@ import math
 import traceback
 
 # ================================================================================
+# FUNCIÓN PARA DETECTAR CONFIGURACIÓN DESDE LOCALSTORAGE
+# ================================================================================
+
+def detectar_config_local():
+    """
+    Detecta si hay una configuración guardada en localStorage y la aplica.
+    Esto se ejecuta al inicio de la aplicación.
+    """
+    # Verificar si hay un parámetro en la URL que indique que hay configuración
+    query_params = st.query_params
+    if 'config_loaded' in query_params:
+        # Si ya se cargó, limpiar el parámetro
+        st.query_params.clear()
+        return
+    
+    # Intentar leer la configuración desde session_state (cargada desde localStorage)
+    if 'config_3d' in st.session_state and st.session_state.config_3d:
+        config = st.session_state.config_3d
+        if st.session_state.red:
+            # Aplicar configuración a la red
+            for nodo_cfg in config.get("nodos", []):
+                nid = nodo_cfg.get("id")
+                if nid in st.session_state.red.nodos:
+                    nodo = st.session_state.red.nodos[nid]
+                    nodo.es_entrada = nodo_cfg.get("es_entrada", False)
+                    nodo.tipo_aparato = nodo_cfg.get("tipo_aparato", "")
+                    nodo.valvula_tipo = nodo_cfg.get("valvula_tipo", "")
+                    nodo.valvula_cerrada = nodo_cfg.get("valvula_cerrada", False)
+                    nodo.valvula_apertura = nodo_cfg.get("valvula_apertura", 100.0)
+            
+            if config.get("nodo_entrada") is not None:
+                st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
+            
+            st.session_state.config_3d = None  # Limpiar para evitar recarga
+
+# ================================================================================
 # CONFIGURACIÓN DE PÁGINA - STREAMLIT
 # ================================================================================
 st.set_page_config(
@@ -93,7 +129,7 @@ from hydro_utils import generar_excel_bytes, generar_configuracion_json
 # ================================================================================
 
 def generar_html_config(nodos_data, tuberias_data):
-    """Genera HTML para la configuración interactiva de nodos con sincronización y carga de configuración"""
+    """Genera HTML para la configuración interactiva de nodos con sincronización"""
     
     # Verificar que los datos no estén vacíos
     if not nodos_data or not tuberias_data:
@@ -118,6 +154,8 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .btn-danger:hover{{background:#c0392b}}
 .btn-secondary{{background:#7f8c8d}}
 .btn-secondary:hover{{background:#5d6d7e}}
+.btn-sync{{background:#8e44ad}}
+.btn-sync:hover{{background:#6c3483}}
 .badge-entrada{{background:#e74c3c;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-aparato{{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
 .badge-valvula{{background:#e67e22;color:white;padding:2px 8px;border-radius:12px;font-size:10px;display:inline-block;margin:2px}}
@@ -126,7 +164,6 @@ body{{margin:0;font-family:Segoe UI,sans-serif;background:#1e1e1e;color:#ffffff}
 .info-nodo p{{margin:4px 0;font-size:10px;color:#aaaaaa}}
 select{{font-size:10px;padding:3px;margin:3px 0;width:100%;border-radius:4px;border:1px solid #444444;background:#2d2d2d;color:#ffffff}}
 input[type="range"]{{width:100%;margin:5px 0;accent-color:#3498db}}
-.apertura-label{{font-size:10px;color:#aaaaaa;display:flex;justify-content:space-between}}
 .file-input{{display:none}}
 .upload-area{{border:2px dashed #444;border-radius:8px;padding:8px;text-align:center;cursor:pointer;margin:5px 0;font-size:10px;color:#aaaaaa;transition:all 0.3s}}
 .upload-area:hover{{border-color:#3498db;background:rgba(52,152,219,0.1)}}
@@ -140,6 +177,16 @@ label{{color:#ffffff}}
 <div id="sidebar">
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
+
+<!-- Botón de sincronización -->
+<div style="margin-top:8px;">
+    <button class="btn btn-sync" onclick="sincronizarTabla()" style="width:100%; font-size:11px; padding:6px;">
+        🔄 Sincronizar con Tabla Manual
+    </button>
+    <p style="font-size:8px; color:#666; text-align:center; margin:2px 0;">
+        Guarda los cambios y actualiza la tabla manual
+    </p>
+</div>
 
 <!-- Área de carga de configuración -->
 <div style="margin-top:8px; border:1px solid #444; border-radius:6px; padding:6px;">
@@ -174,9 +221,9 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// FUNCIÓN PARA NOTIFICAR CAMBIOS A STREAMLIT
+// FUNCIÓN PARA SINCRONIZAR CON LA TABLA MANUAL
 // ============================================================
-function notificarCambio() {{
+function sincronizarTabla() {{
     // Crear objeto de configuración actual
     const config = {{
         nodo_entrada: entradaId,
@@ -190,18 +237,28 @@ function notificarCambio() {{
         }}))
     }};
     
-    // Enviar mensaje a Streamlit
-    if (window.parent) {{
-        window.parent.postMessage({{
-            type: 'configuracion_cambiada',
-            config: config
-        }}, '*');
-    }}
-    
-    // Guardar en localStorage para persistencia local
+    // Guardar en localStorage para que Streamlit lo pueda leer
     try {{
         localStorage.setItem('hydro_config_3d', JSON.stringify(config));
-    }} catch(e) {{}}
+        console.log("✅ Configuración guardada en localStorage");
+    }} catch(e) {{
+        console.warn("Error guardando en localStorage:", e);
+    }}
+    
+    // Descargar el JSON para que Streamlit lo cargue
+    const blob = new Blob([JSON.stringify(config, null, 2)], {{type: 'application/json'}});
+    const url = URL.createObjectURL(blob);
+    
+    // Crear un enlace de descarga y hacer clic en él
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'hydro_config_temp.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert('✅ Configuración guardada. Haz clic en "Cargar configuración" en la tabla manual para actualizar.');
 }}
 
 // ============================================================
@@ -222,12 +279,10 @@ function cargarConfiguracion(event) {{
         }}
     }};
     reader.readAsText(file);
-    // Resetear el input para poder cargar el mismo archivo nuevamente
     event.target.value = '';
 }}
 
 function aplicarConfiguracion(config) {{
-    // Resetear estado actual
     entradaId = null;
     for(const n of nodos) {{
         n.es_entrada = false;
@@ -237,7 +292,6 @@ function aplicarConfiguracion(config) {{
         n.valvula_apertura = 100;
     }}
     
-    // Aplicar nodo de entrada
     const nodoEntrada = config.nodo_entrada;
     if (nodoEntrada !== undefined && nodoEntrada !== null) {{
         const entrada = nodos.find(n => n.id === nodoEntrada);
@@ -247,7 +301,6 @@ function aplicarConfiguracion(config) {{
         }}
     }}
     
-    // Aplicar configuración de nodos
     for(const nodoConfig of config.nodos) {{
         const nodo = nodos.find(n => n.id === nodoConfig.id);
         if(nodo) {{
@@ -264,10 +317,6 @@ function aplicarConfiguracion(config) {{
         }}
     }}
     
-    // Notificar cambio a Streamlit
-    notificarCambio();
-    
-    // Actualizar todo
     actualizarGrafico();
     actualizarResumen();
     if(nodoSeleccionado) {{
@@ -443,9 +492,6 @@ function mostrarPanel(nodo) {{
     }}
     html += `</div>`;
     document.getElementById('info-panel').innerHTML = html;
-    
-    // Notificar cambio a Streamlit
-    notificarCambio();
 }}
 
 // ============================================================
@@ -467,7 +513,6 @@ function setEntrada(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
-    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -485,7 +530,6 @@ function setAparato(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
-    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -507,7 +551,6 @@ function setValvula(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
-    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -523,7 +566,6 @@ function limpiarNodo(id) {{
     }}
     actualizarGrafico();
     actualizarResumen();
-    notificarCambio();
     if(nodoSeleccionado && nodoSeleccionado.id === id) mostrarPanel(nodo);
 }}
 
@@ -539,7 +581,6 @@ function resetear() {{
         }}
         actualizarGrafico();
         actualizarResumen();
-        notificarCambio();
         document.getElementById('info-panel').innerHTML = '<p style="font-size:11px; color:#aaaaaa">Seleccione un nodo</p>';
     }}
 }}
@@ -581,25 +622,12 @@ function guardar() {{
     a.href = URL.createObjectURL(blob);
     a.download = 'HydroDomusPy_config.json';
     a.click();
-    alert('✅ Configuración guardada exitosamente. Cierre esta ventana y continúe en la aplicación.');
+    alert('✅ Configuración guardada exitosamente.');
 }}
 
 // ============================================================
 // INICIALIZAR
 // ============================================================
-// Cargar configuración guardada en localStorage si existe
-try {{
-    const savedConfig = localStorage.getItem('hydro_config_3d');
-    if (savedConfig) {{
-        const config = JSON.parse(savedConfig);
-        // Solo aplicar si hay una configuración válida
-        if (config && config.nodo_entrada !== undefined && config.nodos) {{
-            console.log("🔄 Cargando configuración guardada localmente...");
-            aplicarConfiguracion(config);
-        }}
-    }}
-}} catch(e) {{}}
-
 actualizarGrafico();
 actualizarResumen();
 </script></body></html>"""
