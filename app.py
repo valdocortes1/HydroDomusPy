@@ -110,62 +110,47 @@ if 'nodos_raw' not in st.session_state:
 # FUNCIÓN PARA DETECTAR SINCRONIZACIÓN DESDE LA INTERFAZ 3D
 # ================================================================================
 
-def detectar_sincronizacion_3d():
+def detectar_carga_3d():
     """
-    Detecta si hay una solicitud de sincronización desde la interfaz 3D.
-    Lee la configuración desde la URL y sessionStorage.
+    Detecta si hay una solicitud de carga desde la interfaz 3D.
     """
     query_params = st.query_params
     
-    # Verificar si hay un parámetro 'sync' en la URL
-    if 'sync' in query_params:
-        # Limpiar el parámetro para evitar bucles
+    if 'cargar_config' in query_params and query_params['cargar_config'] == '3d':
+        # Limpiar el parámetro
         st.query_params.clear()
         
-        # Intentar leer la configuración desde el navegador usando JavaScript
-        # (Esto se ejecuta en el lado del cliente)
+        # Leer la configuración desde sessionStorage usando JavaScript
         st.markdown("""
         <script>
         (function() {
             try {
-                const configJson = sessionStorage.getItem('hydro_config_3d_sync');
+                const configJson = sessionStorage.getItem('hydro_config_3d');
                 if (configJson) {
-                    // Limpiar sessionStorage para evitar recargas infinitas
-                    sessionStorage.removeItem('hydro_config_3d_sync');
-                    
-                    // Codificar y pasar a Streamlit como parámetro URL
+                    const config = JSON.parse(configJson);
+                    // Guardar en session_state usando un parámetro
                     const encoded = encodeURIComponent(configJson);
                     const currentUrl = new URL(window.location.href);
-                    currentUrl.searchParams.set('sync_config', encoded);
+                    currentUrl.searchParams.set('config_3d_data', encoded);
                     window.history.replaceState({}, '', currentUrl);
-                    
-                    // Recargar la página para que Streamlit procese el parámetro
                     location.reload();
                 }
             } catch(e) {
-                console.log('Error leyendo sessionStorage:', e);
+                console.log('Error:', e);
             }
         })();
         </script>
         """, unsafe_allow_html=True)
-        
-        # Esperar a que JavaScript procese y recargue
-        # No devolvemos True aquí porque la recarga vendrá después
-        
         return True
     
-    # Verificar si hay una configuración en la URL (enviada por JavaScript)
-    if 'sync_config' in query_params:
+    if 'config_3d_data' in query_params:
         try:
-            # Decodificar la configuración
-            config_json = query_params['sync_config']
+            config_json = query_params['config_3d_data']
             config = json.loads(config_json)
-            
-            # Limpiar el parámetro
             st.query_params.clear()
             
             if st.session_state.red and config:
-                # Aplicar configuración a la red
+                # Aplicar configuración
                 for nodo_cfg in config.get("nodos", []):
                     nid = nodo_cfg.get("id")
                     if nid in st.session_state.red.nodos:
@@ -179,28 +164,22 @@ def detectar_sincronizacion_3d():
                 if config.get("nodo_entrada") is not None:
                     st.session_state.red.nodo_entrada_id = config["nodo_entrada"]
                 
-                st.session_state.config_actualizada = True
-                
-                # 👇 GUARDAR EN SESSION_STATE PARA QUE LA TABLA LO LEA
                 st.session_state.config_3d = config
-                
-                # Mostrar mensaje de éxito
-                st.success("✅ ¡Configuración sincronizada desde la interfaz 3D!")
-                
-                # 👇 FORZAR RECARGA COMPLETA PARA ACTUALIZAR LA TABLA
+                st.success("✅ Configuración cargada desde la interfaz 3D")
                 st.rerun()
                 return True
                 
         except Exception as e:
-            st.error(f"Error al procesar la configuración: {e}")
+            st.error(f"Error: {e}")
             st.query_params.clear()
             return False
     
     return False
 
-
-if detectar_sincronizacion_3d():
-    # Si se detectó sincronización, la función ya manejó la actualización
+# ================================================================================
+# LLAMAR A LA FUNCIÓN DE DETECCIÓN
+# ================================================================================
+if detectar_carga_3d():
     pass
 # ================================================================================
 # IMPORTACIONES DE MÓDULOS PROPIOS
@@ -272,12 +251,12 @@ label{{color:#ffffff}}
 <h3>📋 Configuración</h3>
 <div id="info-panel"><p style="font-size:11px; color:#aaaaaa">✨ Haga clic en un nodo del gráfico 3D</p></div>
 
-<!-- Botón de sincronización -->
+<!-- Botón de implementación de configuración -->
 <div style="margin-top:8px;">
-    <button class="btn btn-sync" onclick="sincronizarTablaDirecta()" id="syncBtn" style="width:100%; font-size:11px; padding:6px;">
-        💾 Guardar Configuración en la Tabla
+    <button class="btn btn-sync" onclick="implementarConfiguracion()" id="syncBtn" style="width:100%; font-size:11px; padding:6px;">
+        ⚡ Implementar Configuración
     </button>
-    <p class="sync-status" id="syncStatus">Guarda la configuración actual para cargarla en la tabla manual</p>
+    <p class="sync-status" id="syncStatus">Aplica la configuración actual a la tabla manual</p>
 </div>
 
 <!-- Área de carga de configuración -->
@@ -313,13 +292,9 @@ let nodoSeleccionado = null;
 let currentCamera = null;
 
 // ============================================================
-// FUNCIÓN PARA GUARDAR CONFIGURACIÓN EN sessionStorage
+// FUNCIÓN PARA GENERAR LA MATRIZ DE CONFIGURACIÓN
 // ============================================================
-function sincronizarTablaDirecta() {{
-    const btn = document.getElementById('syncBtn');
-    const status = document.getElementById('syncStatus');
-    
-    // Crear objeto de configuración actual
+function generarConfiguracionRed() {{
     const config = {{
         nodo_entrada: entradaId,
         nodos: nodos.map(n => ({{
@@ -331,17 +306,35 @@ function sincronizarTablaDirecta() {{
             valvula_apertura: n.valvula_apertura !== undefined ? n.valvula_apertura : 100
         }}))
     }};
+    return config;
+}}
+
+// ============================================================
+// FUNCIÓN PARA IMPLEMENTAR LA CONFIGURACIÓN EN LA TABLA
+// ============================================================
+function implementarConfiguracion() {{
+    const btn = document.getElementById('syncBtn');
+    const status = document.getElementById('syncStatus');
+    
+    // Generar la configuración
+    const config = generarConfiguracionRed();
+    const configJson = JSON.stringify(config);
     
     // Guardar en sessionStorage
     try {{
-        sessionStorage.setItem('hydro_config_3d_sync', JSON.stringify(config));
-        console.log("✅ Configuración guardada en sessionStorage");
+        sessionStorage.setItem('hydro_config_3d', configJson);
+        console.log("✅ Configuración implementada:", config);
         btn.classList.add('active');
-        status.innerHTML = '✅ Configuración guardada. Ve a la tabla manual y haz clic en "Cargar desde 3D"';
+        status.innerHTML = '✅ Configuración implementada. Recargando tabla...';
         status.style.color = '#2ecc71';
+        
+        // Recargar la página para que Streamlit lea la configuración
+        setTimeout(() => {{
+            window.location.href = window.location.pathname + '?cargar_config=3d';
+        }}, 300);
     }} catch(e) {{
-        console.warn("Error guardando:", e);
-        status.innerHTML = '❌ Error al guardar la configuración';
+        console.warn("Error al implementar:", e);
+        status.innerHTML = '❌ Error al implementar la configuración';
         status.style.color = '#e74c3c';
     }}
 }}
