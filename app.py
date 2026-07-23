@@ -78,10 +78,10 @@ if 'tema' not in st.session_state:
     st.session_state.tema = tema_sistema if tema_sistema else "dark"
 
 # ================================================================================
-# APLICAR ESTILOS CSS (siempre ejecutar después de inicializar el tema)
+# APLICAR ESTILOS CSS (VERSIÓN DEFINITIVA CON SELECTORES ESPECÍFICOS)
 # ================================================================================
 def apply_styles():
-    """Aplica estilos CSS según el tema seleccionado"""
+    """Aplica estilos CSS según el tema seleccionado - Versión corregida"""
     is_dark = st.session_state.tema == "dark"
     
     # Colores según tema
@@ -93,6 +93,7 @@ def apply_styles():
         text_sec = "#bbbbbb"
         input_bg = "#1a2533"
         input_text = "#ffffff"
+        input_border = "#3d3d4d"
         btn_bg = "rgba(255,255,255,0.08)"
         btn_text = "#ffffff"
         btn_hover = "rgba(255,255,255,0.15)"
@@ -107,6 +108,7 @@ def apply_styles():
         text_sec = "#4a4a5a"
         input_bg = "#ffffff"
         input_text = "#1a1a2e"
+        input_border = "#d0d0d0"
         btn_bg = "#f0f2f6"
         btn_text = "#1a1a2e"
         btn_hover = "#e0e0e0"
@@ -116,36 +118,95 @@ def apply_styles():
 
     st.markdown(f"""
     <style>
-        /* ESTILOS GENERALES */
-        .stApp {{ background: {bg} !important; }}
-        .stApp * {{ color: {text} !important; }}
-        
-        /* EXCEPCIONES */
-        .stApp .dot-green {{ background: #2ecc71; color: white !important; }}
-        .stApp .dot-yellow {{ background: #f1c40f; color: white !important; }}
-        .stApp .dot-red {{ background: #e74c3c; color: white !important; }}
-        .stApp .dot-gray {{ background: #7f8c8d; color: white !important; }}
-        
-        /* OCULTAR SIDEBAR */
-        .stSidebar {{ display: none !important; }}
-        
-        /* HEADER */
-        .main-header {{
-            background: {header_grad} !important;
-            padding: 1rem 2rem !important;
-            border-radius: 12px !important;
-            margin-bottom: 1.2rem !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
-            flex-wrap: wrap !important;
-            gap: 0.8rem !important;
+        /* ============================================================
+           ESTILOS GENERALES
+           ============================================================ */
+        .stApp {{
+            background: {bg} !important;
         }}
-        .main-header * {{ color: #ffffff !important; }}
-        .main-header .subtitle {{ color: rgba(255,255,255,0.7) !important; }}
         
-        /* BARRA DE HERRAMIENTAS */
+        /* ============================================================
+           INPUTS Y SELECTORES - CORREGIDO CON SELECTORES ESPECÍFICOS
+           ============================================================ */
+        /* Contenedor principal de inputs */
+        .stSelectbox > div,
+        .stNumberInput > div,
+        .stTextInput > div,
+        .stFileUploader > div,
+        .stDateInput > div,
+        .stTimeInput > div {{
+            background: {input_bg} !important;
+            border: 1px solid {input_border} !important;
+            border-radius: 8px !important;
+        }}
+        
+        /* Selectores desplegables - EL MÁS IMPORTANTE */
+        .stSelectbox [data-baseweb="select"] > div {{
+            background: {input_bg} !important;
+            color: {input_text} !important;
+            border: none !important;
+        }}
+        
+        .stSelectbox [data-baseweb="select"] input {{
+            color: {input_text} !important;
+            background: {input_bg} !important;
+        }}
+        
+        .stSelectbox [data-baseweb="select"] svg {{
+            fill: {input_text} !important;
+        }}
+        
+        /* Labels de inputs */
+        .stSelectbox label,
+        .stNumberInput label,
+        .stTextInput label,
+        .stFileUploader label {{
+            color: {text_sec} !important;
+        }}
+        
+        /* Inputs numéricos */
+        .stNumberInput input {{
+            color: {input_text} !important;
+            background: {input_bg} !important;
+            border: none !important;
+        }}
+        
+        /* Botones de incremento/decremento en NumberInput */
+        .stNumberInput button {{
+            background: {input_bg} !important;
+            color: {input_text} !important;
+            border: 1px solid {input_border} !important;
+        }}
+        
+        .stNumberInput button:hover {{
+            background: {btn_hover} !important;
+        }}
+        
+        /* File Uploader */
+        .stFileUploader > div > div {{
+            background: {input_bg} !important;
+            border: 1px dashed {input_border} !important;
+            border-radius: 8px !important;
+        }}
+        
+        .stFileUploader > div > div > div {{
+            color: {text_sec} !important;
+        }}
+        
+        /* Botón del File Uploader */
+        .stFileUploader button {{
+            background: #3498db !important;
+            color: white !important;
+            border: none !important;
+        }}
+        
+        .stFileUploader button:hover {{
+            background: #2980b9 !important;
+        }}
+        
+        /* ============================================================
+           BARRA DE HERRAMIENTAS
+           ============================================================ */
         .toolbar {{
             background: {card} !important;
             padding: 0.6rem 1.2rem !important;
@@ -158,6 +219,7 @@ def apply_styles():
             border: 1px solid {border} !important;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
         }}
+        
         .toolbar .divider {{
             width: 1px !important;
             height: 28px !important;
@@ -165,31 +227,9 @@ def apply_styles():
             margin: 0 0.4rem !important;
         }}
         
-        /* INPUTS Y SELECTORES */
-        .stSelectbox > div,
-        .stNumberInput > div,
-        .stTextInput > div,
-        .stFileUploader > div {{
-            background: {input_bg} !important;
-            border: 1px solid {border} !important;
-            border-radius: 8px !important;
-        }}
-        .stSelectbox label,
-        .stNumberInput label {{
-            color: {text_sec} !important;
-        }}
-        .stSelectbox [data-baseweb="select"] > div {{
-            background: {input_bg} !important;
-            color: {input_text} !important;
-            border: none !important;
-        }}
-        .stNumberInput input {{
-            color: {input_text} !important;
-            background: {input_bg} !important;
-            border: none !important;
-        }}
-        
-        /* BOTONES */
+        /* ============================================================
+           BOTONES
+           ============================================================ */
         .stButton > button {{
             background: {btn_bg} !important;
             color: {btn_text} !important;
@@ -198,21 +238,26 @@ def apply_styles():
             padding: 0.3rem 0.8rem !important;
             font-size: 0.8rem !important;
         }}
+        
         .stButton > button:hover {{
             background: {btn_hover} !important;
             border-color: #3498db !important;
         }}
+        
         .stButton > button.primary {{
             background: #3498db !important;
             color: white !important;
             border-color: #3498db !important;
         }}
+        
         .stButton > button.primary:hover {{
             background: #2980b9 !important;
             border-color: #2980b9 !important;
         }}
         
-        /* TARJETAS DE MÉTRICAS */
+        /* ============================================================
+           TARJETAS DE MÉTRICAS
+           ============================================================ */
         .metric-card {{
             background: {card} !important;
             padding: 1rem !important;
@@ -225,22 +270,27 @@ def apply_styles():
             flex-direction: column !important;
             justify-content: center !important;
         }}
+        
         .metric-card .metric-value {{
             font-size: 1.6rem !important;
             font-weight: 700 !important;
             color: #3498db !important;
         }}
+        
         .metric-card .metric-label {{
             font-size: 0.75rem !important;
             color: {text_sec} !important;
             margin-top: 0.2rem !important;
         }}
+        
         .metric-card:hover {{
             border-color: #3498db !important;
             transform: translateY(-2px) !important;
         }}
         
-        /* SECCIONES DE CONFIGURACIÓN */
+        /* ============================================================
+           SECCIONES DE CONFIGURACIÓN
+           ============================================================ */
         .config-section {{
             background: {card} !important;
             padding: 1.2rem !important;
@@ -249,6 +299,7 @@ def apply_styles():
             border: 1px solid {border} !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }}
+        
         .config-section .section-title {{
             font-size: 1rem !important;
             font-weight: 600 !important;
@@ -256,7 +307,9 @@ def apply_styles():
             margin-bottom: 0.8rem !important;
         }}
         
-        /* PESTAÑAS */
+        /* ============================================================
+           PESTAÑAS
+           ============================================================ */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 0.3rem !important;
             background: {tab_bg} !important;
@@ -264,6 +317,7 @@ def apply_styles():
             border-radius: 10px !important;
             border: 1px solid {border} !important;
         }}
+        
         .stTabs [data-baseweb="tab"] {{
             padding: 0.5rem 1rem !important;
             border-radius: 8px !important;
@@ -271,24 +325,54 @@ def apply_styles():
             font-size: 0.85rem !important;
             color: {tab_text} !important;
         }}
+        
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
             background: #3498db !important;
             color: white !important;
         }}
         
-        /* DATAFRAMES */
+        /* ============================================================
+           HEADER SUPERIOR
+           ============================================================ */
+        .main-header {{
+            background: {header_grad} !important;
+            padding: 1rem 2rem !important;
+            border-radius: 12px !important;
+            margin-bottom: 1.2rem !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            flex-wrap: wrap !important;
+            gap: 0.8rem !important;
+        }}
+        
+        .main-header * {{
+            color: #ffffff !important;
+        }}
+        
+        .main-header .subtitle {{
+            color: rgba(255,255,255,0.7) !important;
+        }}
+        
+        /* ============================================================
+           DATAFRAMES
+           ============================================================ */
         .stDataFrame {{
             border: 1px solid {border} !important;
             border-radius: 10px !important;
             overflow: hidden !important;
         }}
         
-        /* EXPANDERS */
+        /* ============================================================
+           EXPANDERS
+           ============================================================ */
         .streamlit-expanderHeader {{
             background: {card} !important;
             border: 1px solid {border} !important;
             border-radius: 8px !important;
         }}
+        
         .streamlit-expanderContent {{
             background: {card} !important;
             border: 1px solid {border} !important;
@@ -296,12 +380,16 @@ def apply_styles():
             border-radius: 0 0 8px 8px !important;
         }}
         
-        /* SCROLLBAR */
+        /* ============================================================
+           SCROLLBAR
+           ============================================================ */
         ::-webkit-scrollbar {{ width: 6px !important; height: 6px !important; }}
         ::-webkit-scrollbar-track {{ background: {card} !important; border-radius: 3px !important; }}
         ::-webkit-scrollbar-thumb {{ background: #3498db !important; border-radius: 3px !important; }}
         
-        /* RESPONSIVE */
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 768px) {{
             .main-header {{ flex-direction: column !important; text-align: center !important; }}
             .toolbar {{ flex-direction: column !important; align-items: stretch !important; }}
@@ -314,7 +402,7 @@ def apply_styles():
 apply_styles()
 
 # ================================================================================
-# IMPORTACIONES DE MÓDULOS PROPIOS (después de los estilos)
+# IMPORTACIONES DE MÓDULOS PROPIOS
 # ================================================================================
 from hydro_core import (
     DXFReader, normalizar_coordenadas, construir_red,
@@ -401,7 +489,6 @@ def procesar_dxf(dxf_file):
 def ejecutar_analisis():
     """Ejecuta el análisis hidráulico"""
     with st.spinner("🚀 Ejecutando análisis..."):
-        # Actualizar variables globales en hydro_core
         import hydro_core
         hydro_core.VEL_MIN_MS = st.session_state.vel_min
         hydro_core.VEL_MAX_MS = st.session_state.vel_max
@@ -464,7 +551,6 @@ def mostrar_welcome():
     </div>
     """, unsafe_allow_html=True)
     
-    # Características
     col1, col2, col3, col4 = st.columns(4)
     features = [
         ("📁", "Lectura DXF", "Soporta LINE, LWPOLYLINE, POLYLINE y 3DPOLYLINE"),
