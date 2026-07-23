@@ -1790,13 +1790,14 @@ def main():
                     st.rerun()
         
         st.divider()
-        
+
+        global VEL_MIN_MS, VEL_MAX_MS
         # ===== EJECUTAR ANÁLISIS =====
         if st.session_state.red is not None and st.session_state.red.nodo_entrada_id is not None:
             if st.button("🚀 EJECUTAR ANÁLISIS", type="primary", use_container_width=True):
                 with st.spinner("Ejecutando análisis hidráulico..."):
                     # Actualizar variables globales
-                    global VEL_MIN_MS, VEL_MAX_MS
+                    
                     VEL_MIN_MS = vel_min
                     VEL_MAX_MS = vel_max
                     
