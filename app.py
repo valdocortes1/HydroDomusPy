@@ -846,7 +846,7 @@ mostrar_metodologia()
 with st.sidebar:
     st.header("⚙️ Parámetros de Cálculo")
     
-    # ===== TIPO DE EDIFICACIÓN CON FÓRMULA (adaptada al tema) =====
+    # ===== TIPO DE EDIFICACIÓN CON FÓRMULA =====
     tipo_ocupacion = st.selectbox(
         "Tipo de Edificación", 
         list(TIPOS_OCUPACION_AGUA.keys()),
@@ -856,18 +856,16 @@ with st.sidebar:
     
     # Detectar tema actual
     tema_actual = st.get_option("theme.base")
-    is_dark = tema_actual == "dark"
+    is_dark = tema_actual
     
     # Colores según tema
     if is_dark:
         bg_color = "#2d2d2d"
-        text_primary = "#ffffff"
         text_secondary = "#bbbbbb"
         formula_color = "#3498db"
         border_color = "#3498db"
     else:
         bg_color = "#f0f0f0"
-        text_primary = "#1a1a2e"
         text_secondary = "#555555"
         formula_color = "#2980b9"
         border_color = "#2980b9"
@@ -933,22 +931,30 @@ with st.sidebar:
     st.subheader("📏 Restricción de Diámetro")
     
     restringir_diametro = st.checkbox(
-        "Restringir al diámetro de la red matriz", 
+        "✅ Limitar diámetro máximo de toda la red", 
         value=False,
-        key="restringir_sidebar"
+        key="restringir_sidebar",
+        help="Activa esta opción para establecer un diámetro máximo que no podrá ser superado por ninguna tubería de la red"
     )
     
     if restringir_diametro:
+        st.caption("⚠️ Todas las tuberías de la red tendrán un diámetro máximo igual o inferior al seleccionado")
+        
         diametro_maximo_nom = st.selectbox(
-            "Diámetro máximo permitido:", 
+            "Diámetro máximo permitido en la red:", 
             list(DIAMETROS_PAVCO.keys()), 
             index=2,
-            key="diam_max_sidebar"
+            key="diam_max_sidebar",
+            help="Este será el diámetro máximo que podrá tener cualquier tubería en el sistema"
         )
         st.session_state.diametro_maximo = DIAMETROS_PAVCO[diametro_maximo_nom]
+        
+        # Mostrar información adicional
+        diam_mm = DIAMETROS_PAVCO[diametro_maximo_nom]
+        st.caption(f"📐 Diámetro seleccionado: **{diametro_maximo_nom}** ({diam_mm:.1f} mm)")
     else:
         st.session_state.diametro_maximo = None
-        st.caption("✅ Sin restricción")
+        st.caption("✅ Sin restricción - los diámetros se optimizarán automáticamente")
     
     # ===== ESTADO DEL SISTEMA =====
     st.markdown("---")
