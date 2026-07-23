@@ -78,82 +78,109 @@ if 'tema' not in st.session_state:
     st.session_state.tema = tema_sistema if tema_sistema else "dark"
 
 # ================================================================================
-# APLICAR ESTILOS CSS (VERSIÓN DEFINITIVA CON SELECTORES ESPECÍFICOS)
+# PALETA DE COLORES Y ESTILOS CSS - DEFINITIVA
 # ================================================================================
 def apply_styles():
-    """Aplica estilos CSS según el tema seleccionado - Versión corregida"""
+    """Aplica estilos CSS con paleta de colores consistente para cada tema"""
     is_dark = st.session_state.tema == "dark"
     
-    # Colores según tema
+    # ============================================================
+    # PALETA DE COLORES - MODO OSCURO
+    # ============================================================
     if is_dark:
-        bg = "#0e1117"
-        card = "#262730"
-        border = "#3d3d4d"
-        text = "#ffffff"
-        text_sec = "#bbbbbb"
-        input_bg = "#1a2533"
-        input_text = "#ffffff"
-        input_border = "#3d3d4d"
-        btn_bg = "rgba(255,255,255,0.08)"
-        btn_text = "#ffffff"
-        btn_hover = "rgba(255,255,255,0.15)"
-        tab_bg = "#1a2533"
-        tab_text = "#bbbbbb"
-        header_grad = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
+        # Fondos
+        BG_PRIMARY = "#0e1117"
+        BG_SECONDARY = "#1e2a3a"
+        BG_CARD = "#262730"
+        BG_INPUT = "#1a2533"
+        BG_BUTTON = "rgba(255,255,255,0.08)"
+        BG_TAB = "#1a2533"
+        
+        # Textos
+        TEXT_PRIMARY = "#ffffff"
+        TEXT_SECONDARY = "#bbbbbb"
+        TEXT_INPUT = "#ffffff"
+        TEXT_BUTTON = "#ffffff"
+        TEXT_TAB = "#bbbbbb"
+        
+        # Bordes
+        BORDER = "#3d3d4d"
+        BORDER_INPUT = "#3d3d4d"
+        
+        # Estados
+        BTN_HOVER = "rgba(255,255,255,0.15)"
+        TAB_ACTIVE = "#3498db"
+        HEADER_GRAD = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
+    
+    # ============================================================
+    # PALETA DE COLORES - MODO CLARO
+    # ============================================================
     else:
-        bg = "#f0f2f6"
-        card = "#ffffff"
-        border = "#d0d0d0"
-        text = "#1a1a2e"
-        text_sec = "#4a4a5a"
-        input_bg = "#ffffff"
-        input_text = "#1a1a2e"
-        input_border = "#d0d0d0"
-        btn_bg = "#f0f2f6"
-        btn_text = "#1a1a2e"
-        btn_hover = "#e0e0e0"
-        tab_bg = "#f0f2f6"
-        tab_text = "#4a4a5a"
-        header_grad = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
-
+        # Fondos
+        BG_PRIMARY = "#f0f2f6"
+        BG_SECONDARY = "#ffffff"
+        BG_CARD = "#ffffff"
+        BG_INPUT = "#ffffff"
+        BG_BUTTON = "#f0f2f6"
+        BG_TAB = "#f0f2f6"
+        
+        # Textos
+        TEXT_PRIMARY = "#1a1a2e"
+        TEXT_SECONDARY = "#4a4a5a"
+        TEXT_INPUT = "#1a1a2e"
+        TEXT_BUTTON = "#1a1a2e"
+        TEXT_TAB = "#4a4a5a"
+        
+        # Bordes
+        BORDER = "#d0d0d0"
+        BORDER_INPUT = "#d0d0d0"
+        
+        # Estados
+        BTN_HOVER = "#e0e0e0"
+        TAB_ACTIVE = "#3498db"
+        HEADER_GRAD = "linear-gradient(135deg, #1a5276, #2471a3, #2e86c1)"
+    
+    # ============================================================
+    # APLICAR ESTILOS CSS
+    # ============================================================
     st.markdown(f"""
     <style>
         /* ============================================================
            ESTILOS GENERALES
            ============================================================ */
         .stApp {{
-            background: {bg} !important;
+            background: {BG_PRIMARY} !important;
         }}
         
         /* ============================================================
-           INPUTS Y SELECTORES - CORREGIDO CON SELECTORES ESPECÍFICOS
+           INPUTS Y SELECTORES - TODOS UNIFORMES
            ============================================================ */
-        /* Contenedor principal de inputs */
+        /* Contenedor principal de todos los inputs */
         .stSelectbox > div,
         .stNumberInput > div,
         .stTextInput > div,
         .stFileUploader > div,
         .stDateInput > div,
         .stTimeInput > div {{
-            background: {input_bg} !important;
-            border: 1px solid {input_border} !important;
+            background: {BG_INPUT} !important;
+            border: 1px solid {BORDER_INPUT} !important;
             border-radius: 8px !important;
         }}
         
-        /* Selectores desplegables - EL MÁS IMPORTANTE */
+        /* Selectores desplegables */
         .stSelectbox [data-baseweb="select"] > div {{
-            background: {input_bg} !important;
-            color: {input_text} !important;
+            background: {BG_INPUT} !important;
+            color: {TEXT_INPUT} !important;
             border: none !important;
         }}
         
         .stSelectbox [data-baseweb="select"] input {{
-            color: {input_text} !important;
-            background: {input_bg} !important;
+            color: {TEXT_INPUT} !important;
+            background: {BG_INPUT} !important;
         }}
         
         .stSelectbox [data-baseweb="select"] svg {{
-            fill: {input_text} !important;
+            fill: {TEXT_INPUT} !important;
         }}
         
         /* Labels de inputs */
@@ -161,36 +188,36 @@ def apply_styles():
         .stNumberInput label,
         .stTextInput label,
         .stFileUploader label {{
-            color: {text_sec} !important;
+            color: {TEXT_SECONDARY} !important;
         }}
         
         /* Inputs numéricos */
         .stNumberInput input {{
-            color: {input_text} !important;
-            background: {input_bg} !important;
+            color: {TEXT_INPUT} !important;
+            background: {BG_INPUT} !important;
             border: none !important;
         }}
         
         /* Botones de incremento/decremento en NumberInput */
         .stNumberInput button {{
-            background: {input_bg} !important;
-            color: {input_text} !important;
-            border: 1px solid {input_border} !important;
+            background: {BG_INPUT} !important;
+            color: {TEXT_INPUT} !important;
+            border: 1px solid {BORDER_INPUT} !important;
         }}
         
         .stNumberInput button:hover {{
-            background: {btn_hover} !important;
+            background: {BTN_HOVER} !important;
         }}
         
         /* File Uploader */
         .stFileUploader > div > div {{
-            background: {input_bg} !important;
-            border: 1px dashed {input_border} !important;
+            background: {BG_INPUT} !important;
+            border: 1px dashed {BORDER_INPUT} !important;
             border-radius: 8px !important;
         }}
         
         .stFileUploader > div > div > div {{
-            color: {text_sec} !important;
+            color: {TEXT_SECONDARY} !important;
         }}
         
         /* Botón del File Uploader */
@@ -205,42 +232,19 @@ def apply_styles():
         }}
         
         /* ============================================================
-           BARRA DE HERRAMIENTAS
-           ============================================================ */
-        .toolbar {{
-            background: {card} !important;
-            padding: 0.6rem 1.2rem !important;
-            border-radius: 10px !important;
-            margin-bottom: 1.2rem !important;
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 0.6rem !important;
-            align-items: center !important;
-            border: 1px solid {border} !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-        }}
-        
-        .toolbar .divider {{
-            width: 1px !important;
-            height: 28px !important;
-            background: {border} !important;
-            margin: 0 0.4rem !important;
-        }}
-        
-        /* ============================================================
            BOTONES
            ============================================================ */
         .stButton > button {{
-            background: {btn_bg} !important;
-            color: {btn_text} !important;
-            border: 1px solid {border} !important;
+            background: {BG_BUTTON} !important;
+            color: {TEXT_BUTTON} !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 8px !important;
             padding: 0.3rem 0.8rem !important;
             font-size: 0.8rem !important;
         }}
         
         .stButton > button:hover {{
-            background: {btn_hover} !important;
+            background: {BTN_HOVER} !important;
             border-color: #3498db !important;
         }}
         
@@ -259,11 +263,11 @@ def apply_styles():
            TARJETAS DE MÉTRICAS
            ============================================================ */
         .metric-card {{
-            background: {card} !important;
+            background: {BG_CARD} !important;
             padding: 1rem !important;
             border-radius: 12px !important;
             text-align: center !important;
-            border: 1px solid {border} !important;
+            border: 1px solid {BORDER} !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
             min-height: 80px !important;
             display: flex !important;
@@ -279,7 +283,7 @@ def apply_styles():
         
         .metric-card .metric-label {{
             font-size: 0.75rem !important;
-            color: {text_sec} !important;
+            color: {TEXT_SECONDARY} !important;
             margin-top: 0.2rem !important;
         }}
         
@@ -292,11 +296,11 @@ def apply_styles():
            SECCIONES DE CONFIGURACIÓN
            ============================================================ */
         .config-section {{
-            background: {card} !important;
+            background: {BG_SECONDARY} !important;
             padding: 1.2rem !important;
             border-radius: 12px !important;
             margin-bottom: 1.2rem !important;
-            border: 1px solid {border} !important;
+            border: 1px solid {BORDER} !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }}
         
@@ -312,10 +316,10 @@ def apply_styles():
            ============================================================ */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 0.3rem !important;
-            background: {tab_bg} !important;
+            background: {BG_TAB} !important;
             padding: 0.4rem !important;
             border-radius: 10px !important;
-            border: 1px solid {border} !important;
+            border: 1px solid {BORDER} !important;
         }}
         
         .stTabs [data-baseweb="tab"] {{
@@ -323,11 +327,11 @@ def apply_styles():
             border-radius: 8px !important;
             font-weight: 500 !important;
             font-size: 0.85rem !important;
-            color: {tab_text} !important;
+            color: {TEXT_TAB} !important;
         }}
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            background: #3498db !important;
+            background: {TAB_ACTIVE} !important;
             color: white !important;
         }}
         
@@ -335,7 +339,7 @@ def apply_styles():
            HEADER SUPERIOR
            ============================================================ */
         .main-header {{
-            background: {header_grad} !important;
+            background: {HEADER_GRAD} !important;
             padding: 1rem 2rem !important;
             border-radius: 12px !important;
             margin-bottom: 1.2rem !important;
@@ -356,10 +360,33 @@ def apply_styles():
         }}
         
         /* ============================================================
+           BARRA DE HERRAMIENTAS
+           ============================================================ */
+        .toolbar {{
+            background: {BG_SECONDARY} !important;
+            padding: 0.6rem 1.2rem !important;
+            border-radius: 10px !important;
+            margin-bottom: 1.2rem !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 0.6rem !important;
+            align-items: center !important;
+            border: 1px solid {BORDER} !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        }}
+        
+        .toolbar .divider {{
+            width: 1px !important;
+            height: 28px !important;
+            background: {BORDER} !important;
+            margin: 0 0.4rem !important;
+        }}
+        
+        /* ============================================================
            DATAFRAMES
            ============================================================ */
         .stDataFrame {{
-            border: 1px solid {border} !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 10px !important;
             overflow: hidden !important;
         }}
@@ -368,14 +395,14 @@ def apply_styles():
            EXPANDERS
            ============================================================ */
         .streamlit-expanderHeader {{
-            background: {card} !important;
-            border: 1px solid {border} !important;
+            background: {BG_SECONDARY} !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 8px !important;
         }}
         
         .streamlit-expanderContent {{
-            background: {card} !important;
-            border: 1px solid {border} !important;
+            background: {BG_SECONDARY} !important;
+            border: 1px solid {BORDER} !important;
             border-top: none !important;
             border-radius: 0 0 8px 8px !important;
         }}
@@ -384,7 +411,7 @@ def apply_styles():
            SCROLLBAR
            ============================================================ */
         ::-webkit-scrollbar {{ width: 6px !important; height: 6px !important; }}
-        ::-webkit-scrollbar-track {{ background: {card} !important; border-radius: 3px !important; }}
+        ::-webkit-scrollbar-track {{ background: {BG_SECONDARY} !important; border-radius: 3px !important; }}
         ::-webkit-scrollbar-thumb {{ background: #3498db !important; border-radius: 3px !important; }}
         
         /* ============================================================
